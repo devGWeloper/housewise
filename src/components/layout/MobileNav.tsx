@@ -18,7 +18,7 @@ const navItems = [
 
 export function MobileNav() {
   return (
-    <nav className="md:hidden fixed bottom-3 left-3 right-3 z-50 rounded-2xl border border-border/70 bg-background/85 px-2 py-1.5 shadow-xl backdrop-blur-xl">
+    <nav className="md:hidden fixed bottom-3 left-3 right-3 z-50 rounded-2xl border border-border/70 bg-background/90 px-1.5 py-1.5 shadow-xl backdrop-blur-xl">
       <div className="flex items-center justify-around h-14">
         {navItems.map((item) => (
           <NavLink
@@ -27,7 +27,7 @@ export function MobileNav() {
             end={item.to === '/'}
             className={({ isActive }) =>
               cn(
-                'flex flex-col items-center gap-1 rounded-lg px-2 py-1 text-xs transition-all',
+                'flex min-w-0 flex-col items-center gap-1 rounded-lg px-1.5 py-1 text-[11px] transition-all',
                 isActive
                   ? 'bg-primary/10 text-primary'
                   : 'text-muted-foreground',
@@ -35,7 +35,7 @@ export function MobileNav() {
             }
           >
             <item.icon className="h-5 w-5" />
-            <span>{item.label}</span>
+            <span className="truncate">{item.label}</span>
           </NavLink>
         ))}
       </div>

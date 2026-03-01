@@ -110,5 +110,6 @@ export interface Asset {
     pensionType?: '국민연금' | '개인연금'
     loanName?: string
     monthlyPayment?: number
+    originalAmount?: number
   }
 }

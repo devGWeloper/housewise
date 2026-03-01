@@ -48,6 +48,7 @@ function AssetForm({
   const [maturityDate, setMaturityDate] = useState(initial?.details?.maturityDate ?? '')
   const [pensionType, setPensionType] = useState<'국민연금' | '개인연금'>(initial?.details?.pensionType ?? '국민연금')
   const [monthlyPayment, setMonthlyPayment] = useState(initial?.details?.monthlyPayment?.toString() ?? '')
+  const [originalAmount, setOriginalAmount] = useState(initial?.details?.originalAmount?.toString() ?? '')
   const [saving, setSaving] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -62,6 +63,7 @@ function AssetForm({
     } else if (assetType === 'pension') {
       details.pensionType = pensionType
     } else if (assetType === 'debt') {
+      details.originalAmount = originalAmount ? Number(originalAmount) : undefined
       details.monthlyPayment = monthlyPayment ? Number(monthlyPayment) : undefined
     }
 
@@ -109,10 +111,16 @@ function AssetForm({
       )}
 
       {assetType === 'debt' && (
-        <div className="space-y-2">
-          <Label>월 상환액</Label>
-          <Input type="number" value={monthlyPayment} onChange={(e) => setMonthlyPayment(e.target.value)} placeholder="선택 입력" />
-        </div>
+        <>
+          <div className="space-y-2">
+            <Label>최초 대출금</Label>
+            <Input type="number" value={originalAmount} onChange={(e) => setOriginalAmount(e.target.value)} placeholder="선택 입력" min="0" />
+          </div>
+          <div className="space-y-2">
+            <Label>월 상환액</Label>
+            <Input type="number" value={monthlyPayment} onChange={(e) => setMonthlyPayment(e.target.value)} placeholder="선택 입력" min="0" />
+          </div>
+        </>
       )}
 
       <div className="flex gap-2">
@@ -159,6 +167,7 @@ function AssetList({
                   <p className="text-xs text-muted-foreground">
                     {asset.details?.bankName && `${asset.details.bankName} · `}
                     {asset.details?.pensionType && `${asset.details.pensionType} · `}
+                    {asset.details?.originalAmount && `원금 ${formatCurrency(asset.details.originalAmount)} · `}
                     {asset.details?.monthlyPayment && `월 ${formatCurrency(asset.details.monthlyPayment)} 상환 · `}
                     {asset.details?.maturityDate && `만기 ${asset.details.maturityDate}`}
                   </p>

@@ -161,10 +161,10 @@ function AssetList({
         <Card>
           <CardContent className="divide-y divide-border p-0">
             {filtered.map((asset) => (
-              <div key={asset.id} className="flex items-center justify-between px-4 py-3">
-                <div>
+              <div key={asset.id} className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
                   <p className="font-medium">{asset.name}</p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="mt-0.5 break-words text-xs text-muted-foreground">
                     {asset.details?.bankName && `${asset.details.bankName} · `}
                     {asset.details?.pensionType && `${asset.details.pensionType} · `}
                     {asset.details?.originalAmount && `원금 ${formatCurrency(asset.details.originalAmount)} · `}
@@ -172,16 +172,18 @@ function AssetList({
                     {asset.details?.maturityDate && `만기 ${asset.details.maturityDate}`}
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className={`font-semibold ${assetType === 'debt' ? 'text-red-500' : ''}`}>
+                <div className="flex items-center justify-between gap-3 sm:justify-end">
+                  <span className={`font-semibold text-sm sm:text-base ${assetType === 'debt' ? 'text-red-500' : ''}`}>
                     {formatCurrency(asset.balance)}
                   </span>
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(asset)}>
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => onDelete(asset.id)}>
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(asset)}>
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => onDelete(asset.id)}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -202,7 +204,7 @@ export default function AssetsPage() {
     return (
       <div className="space-y-6">
         <Skeleton className="h-8 w-48" />
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           {[1, 2, 3].map((i) => <Skeleton key={i} className="h-24" />)}
         </div>
         <Skeleton className="h-48" />
@@ -211,73 +213,82 @@ export default function AssetsPage() {
   }
 
   return (
-    <div className="space-y-7">
-      <div className="rounded-2xl border border-border/70 bg-card/80 px-5 py-4 backdrop-blur">
-        <h2>자산 관리</h2>
+    <div className="space-y-6 md:space-y-7">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/70 bg-card/80 px-4 py-3 backdrop-blur">
+        <div>
+          <h2 className="text-lg font-semibold">자산 관리</h2>
+          <p className="text-sm text-muted-foreground">
+            예금, 투자, 연금, 부채를 한 화면에서 관리해요.
+          </p>
+        </div>
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogTrigger asChild>
+            <Button className="w-full sm:w-auto" onClick={() => setEditingAsset(null)}>
+              <Plus className="h-4 w-4 mr-1" /> 항목 추가
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                {editingAsset ? `${ASSET_TYPE_LABELS[activeTab]} 수정` : `${ASSET_TYPE_LABELS[activeTab]} 추가`}
+              </DialogTitle>
+            </DialogHeader>
+            <AssetForm
+              assetType={editingAsset?.assetType ?? activeTab}
+              initial={editingAsset ?? undefined}
+              onSubmit={async (data) => {
+                if (editingAsset) {
+                  await updateAsset(editingAsset.id, data)
+                } else {
+                  await addAsset(data)
+                }
+              }}
+              onClose={() => setDialogOpen(false)}
+            />
+          </DialogContent>
+        </Dialog>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Card>
           <CardContent className="pt-4 pb-4">
             <p className="text-xs text-muted-foreground">총 자산</p>
-            <p className="text-lg font-bold">{formatCurrency(totalAssets)}</p>
+            <p className="text-lg font-bold break-all">{formatCurrency(totalAssets)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-4 pb-4">
             <p className="text-xs text-muted-foreground">부채</p>
-            <p className="text-lg font-bold text-red-500">{formatCurrency(totalDebt)}</p>
+            <p className="text-lg font-bold break-all text-red-500">{formatCurrency(totalDebt)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-4 pb-4">
             <p className="text-xs text-muted-foreground">순자산</p>
-            <p className="text-lg font-bold text-primary">{formatCurrency(netWorth)}</p>
+            <p className="text-lg font-bold break-all text-primary">{formatCurrency(netWorth)}</p>
           </CardContent>
         </Card>
       </div>
 
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as AssetType)}>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <TabsList>
-            {(Object.entries(ASSET_TYPE_LABELS) as [AssetType, string][]).map(([type, label]) => (
-              <TabsTrigger key={type} value={type}>{label}</TabsTrigger>
-            ))}
-          </TabsList>
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button size="sm" onClick={() => setEditingAsset(null)}>
-                <Plus className="h-4 w-4 mr-1" /> 추가
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>
-                  {editingAsset ? `${ASSET_TYPE_LABELS[activeTab]} 수정` : `${ASSET_TYPE_LABELS[activeTab]} 추가`}
-                </DialogTitle>
-              </DialogHeader>
-              <AssetForm
-                assetType={editingAsset?.assetType ?? activeTab}
-                initial={editingAsset ?? undefined}
-                onSubmit={async (data) => {
-                  if (editingAsset) {
-                    await updateAsset(editingAsset.id, data)
-                  } else {
-                    await addAsset(data)
-                  }
-                }}
-                onClose={() => setDialogOpen(false)}
-              />
-            </DialogContent>
-          </Dialog>
-        </div>
+      <Tabs
+        value={activeTab}
+        onValueChange={(v) => setActiveTab(v as AssetType)}
+        className="gap-4"
+      >
+        <TabsList className="grid h-auto w-full grid-cols-2 gap-1 sm:grid-cols-4">
+          {(Object.entries(ASSET_TYPE_LABELS) as [AssetType, string][]).map(([type, label]) => (
+            <TabsTrigger key={type} value={type} className="min-h-10 whitespace-normal text-xs sm:text-sm">
+              {label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
 
         {(Object.keys(ASSET_TYPE_LABELS) as AssetType[]).map((type) => (
           <TabsContent key={type} value={type}>
             <AssetList
               assetType={type}
               assets={assets}
-              onEdit={(asset) => { setEditingAsset(asset); setDialogOpen(true) }}
+              onEdit={(asset) => { setEditingAsset(asset); setActiveTab(asset.assetType); setDialogOpen(true) }}
               onDelete={deleteAsset}
             />
           </TabsContent>

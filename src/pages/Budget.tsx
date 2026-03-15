@@ -86,7 +86,7 @@ export default function BudgetPage() {
           </Button>
         </div>
         {!editing && (
-          <Button onClick={startEdit}>
+          <Button className="w-full sm:w-auto" onClick={startEdit}>
             {budget ? '예산 수정' : '예산 설정'}
           </Button>
         )}
@@ -119,7 +119,7 @@ export default function BudgetPage() {
               />
               {totalFixedCosts > 0 && (
                 <p className="text-xs text-muted-foreground">
-                  💡 등록된 고정비 합계가 {formatCurrency(totalFixedCosts)}이에요. 이 금액 이상으로 설정하는 게 좋아요.
+                  등록된 고정비 합계는 {formatCurrency(totalFixedCosts)}예요. 이 금액 이상으로 설정하는 것을 추천해요.
                 </p>
               )}
             </div>
@@ -128,7 +128,7 @@ export default function BudgetPage() {
                 카테고리별 예산{' '}
                 <span className="text-muted-foreground font-normal text-xs">(선택 — 초과 시 경고)</span>
               </Label>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {EXPENSE_CATEGORIES.map((cat) => (
                   <div key={cat} className="space-y-1">
                     <label className="text-xs text-muted-foreground">{cat}</label>

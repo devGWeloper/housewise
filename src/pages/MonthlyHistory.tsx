@@ -91,14 +91,14 @@ export default function MonthlyHistory() {
     if (monthIncome === 0 && monthExpense === 0) return null
     const msgs: string[] = []
     if (expenseChange !== null) {
-      if (expenseChange < -5) msgs.push(`지출이 지난달보다 ${Math.abs(Math.round(expenseChange))}% 줄었어요 👍`)
+      if (expenseChange < -5) msgs.push(`지출이 지난달보다 ${Math.abs(Math.round(expenseChange))}% 줄었어요.`)
       else if (expenseChange > 10) msgs.push(`지출이 지난달보다 ${Math.round(expenseChange)}% 늘었어요`)
     }
     if (savingsRateChange !== null) {
-      if (savingsRateChange > 0) msgs.push(`저축률이 지난달보다 ${savingsRateChange}%p 높아졌어요 🎉`)
+      if (savingsRateChange > 0) msgs.push(`저축률이 지난달보다 ${savingsRateChange}%p 높아졌어요.`)
       else if (savingsRateChange < -5) msgs.push(`저축률이 지난달보다 ${Math.abs(savingsRateChange)}%p 낮아졌어요`)
     }
-    if (savingsRate >= 20) msgs.push(`이번 달 저축률 ${savingsRate}% 달성! 훌륭해요 ✨`)
+    if (savingsRate >= 20) msgs.push(`이번 달 저축률 ${savingsRate}%를 달성했어요.`)
     return msgs.length > 0 ? msgs[0] : null
   }
 
@@ -216,117 +216,118 @@ export default function MonthlyHistory() {
         </Card>
       </div>
 
-      {/* 6-month trend chart */}
-      {!trendLoading && trendData.some((d) => d.income > 0 || d.expense > 0) && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">최근 6개월 흐름</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={220}>
-              <ComposedChart data={trendData} margin={{ left: -10 }}>
-                <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-                <YAxis tickFormatter={formatAxisAmount} tick={{ fontSize: 10 }} width={48} />
-                <Tooltip
-                  formatter={(value, name) => [
-                    formatCurrency(Number(value)),
-                    name === 'income' ? '수입' : name === 'expense' ? '지출' : '저축',
-                  ]}
-                  labelFormatter={(label) => `${label}`}
-                />
-                <Legend
-                  formatter={(value) =>
-                    value === 'income' ? '수입' : value === 'expense' ? '지출' : '저축'
-                  }
-                  iconSize={10}
-                  wrapperStyle={{ fontSize: 12 }}
-                />
-                <Bar dataKey="income" name="income" radius={[3, 3, 0, 0]}>
-                  {trendData.map((entry) => (
-                    <Cell
-                      key={entry.month}
-                      fill={entry.month === month ? '#10b981' : '#d1fae5'}
-                    />
-                  ))}
-                </Bar>
-                <Bar dataKey="expense" name="expense" radius={[3, 3, 0, 0]}>
-                  {trendData.map((entry) => (
-                    <Cell
-                      key={entry.month}
-                      fill={entry.month === month ? '#ef4444' : '#fee2e2'}
-                    />
-                  ))}
-                </Bar>
-                <Line
-                  type="monotone"
-                  dataKey="savings"
-                  name="savings"
-                  stroke="#6366f1"
-                  strokeWidth={2}
-                  dot={{ r: 3 }}
-                />
-              </ComposedChart>
-            </ResponsiveContainer>
-
-            {/* Savings rate row per month */}
-            <div className="mt-3 flex gap-1 overflow-x-auto pb-1">
-              {trendData.map((d) => (
-                <div
-                  key={d.month}
-                  className={`flex flex-col items-center flex-1 min-w-0 rounded-lg px-1 py-1.5 text-center ${
-                    d.month === month ? 'bg-primary/10' : ''
-                  }`}
-                >
-                  <p className="text-xs text-muted-foreground">{d.label}</p>
-                  <p className={`text-sm font-bold ${d.savingsRate >= 20 ? 'text-emerald-600' : d.savingsRate < 0 ? 'text-red-500' : ''}`}>
-                    {d.income > 0 ? `${d.savingsRate}%` : '-'}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Top spending categories */}
-      {topCategories.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">이번 달 TOP 지출</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {topCategories.map(([cat, amount], idx) => {
-              const pct = monthExpense > 0 ? Math.round((amount / monthExpense) * 100) : 0
-              return (
-                <div key={cat} className="flex items-center gap-3">
-                  <div
-                    className="h-8 w-8 shrink-0 rounded-full flex items-center justify-center text-sm font-bold text-white"
-                    style={{ backgroundColor: CATEGORY_COLORS[cat as ExpenseCategory] ?? '#6b7280' }}
-                  >
-                    {idx + 1}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex justify-between mb-1">
-                      <span className="text-sm font-medium">{cat}</span>
-                      <span className="text-sm font-bold">{formatCurrency(amount)}</span>
-                    </div>
-                    <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-                      <div
-                        className="h-full rounded-full"
-                        style={{
-                          width: `${pct}%`,
-                          backgroundColor: CATEGORY_COLORS[cat as ExpenseCategory] ?? '#6b7280',
-                        }}
+      <div className="grid gap-4 xl:grid-cols-[1.7fr_1fr]">
+        {/* 6-month trend chart */}
+        {!trendLoading && trendData.some((d) => d.income > 0 || d.expense > 0) && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">최근 6개월 흐름</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={260}>
+                <ComposedChart data={trendData} margin={{ left: -10 }}>
+                  <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                  <YAxis tickFormatter={formatAxisAmount} tick={{ fontSize: 10 }} width={48} />
+                  <Tooltip
+                    formatter={(value, name) => [
+                      formatCurrency(Number(value)),
+                      name === 'income' ? '수입' : name === 'expense' ? '지출' : '저축',
+                    ]}
+                    labelFormatter={(label) => `${label}`}
+                  />
+                  <Legend
+                    formatter={(value) =>
+                      value === 'income' ? '수입' : value === 'expense' ? '지출' : '저축'
+                    }
+                    iconSize={10}
+                    wrapperStyle={{ fontSize: 12 }}
+                  />
+                  <Bar dataKey="income" name="income" radius={[3, 3, 0, 0]}>
+                    {trendData.map((entry) => (
+                      <Cell
+                        key={entry.month}
+                        fill={entry.month === month ? '#10b981' : '#d1fae5'}
                       />
-                    </div>
+                    ))}
+                  </Bar>
+                  <Bar dataKey="expense" name="expense" radius={[3, 3, 0, 0]}>
+                    {trendData.map((entry) => (
+                      <Cell
+                        key={entry.month}
+                        fill={entry.month === month ? '#ef4444' : '#fee2e2'}
+                      />
+                    ))}
+                  </Bar>
+                  <Line
+                    type="monotone"
+                    dataKey="savings"
+                    name="savings"
+                    stroke="#6366f1"
+                    strokeWidth={2}
+                    dot={{ r: 3 }}
+                  />
+                </ComposedChart>
+              </ResponsiveContainer>
+
+              <div className="mt-3 flex gap-1 overflow-x-auto pb-1">
+                {trendData.map((d) => (
+                  <div
+                    key={d.month}
+                    className={`flex min-w-[64px] flex-col items-center rounded-lg px-1 py-1.5 text-center ${
+                      d.month === month ? 'bg-primary/10' : ''
+                    }`}
+                  >
+                    <p className="text-xs text-muted-foreground">{d.label}</p>
+                    <p className={`text-sm font-bold ${d.savingsRate >= 20 ? 'text-emerald-600' : d.savingsRate < 0 ? 'text-red-500' : ''}`}>
+                      {d.income > 0 ? `${d.savingsRate}%` : '-'}
+                    </p>
                   </div>
-                  <span className="text-xs text-muted-foreground shrink-0">{pct}%</span>
-                </div>
-              )
-            })}
-          </CardContent>
-        </Card>
-      )}
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Top spending categories */}
+        {topCategories.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">이번 달 TOP 지출</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {topCategories.map(([cat, amount], idx) => {
+                const pct = monthExpense > 0 ? Math.round((amount / monthExpense) * 100) : 0
+                return (
+                  <div key={cat} className="flex items-center gap-3">
+                    <div
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
+                      style={{ backgroundColor: CATEGORY_COLORS[cat as ExpenseCategory] ?? '#6b7280' }}
+                    >
+                      {idx + 1}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="mb-1 flex justify-between gap-2">
+                        <span className="truncate text-sm font-medium">{cat}</span>
+                        <span className="shrink-0 text-sm font-bold">{formatCurrency(amount)}</span>
+                      </div>
+                      <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                        <div
+                          className="h-full rounded-full"
+                          style={{
+                            width: `${pct}%`,
+                            backgroundColor: CATEGORY_COLORS[cat as ExpenseCategory] ?? '#6b7280',
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <span className="shrink-0 text-xs text-muted-foreground">{pct}%</span>
+                  </div>
+                )
+              })}
+            </CardContent>
+          </Card>
+        )}
+      </div>
 
       {/* Detailed transactions */}
       {transactions.length === 0 ? (
@@ -357,7 +358,7 @@ export default function MonthlyHistory() {
                   <Card>
                     <CardContent className="divide-y divide-border p-0">
                       {txs.map((tx) => (
-                        <div key={tx.id} className="flex items-center justify-between px-4 py-3">
+                        <div key={tx.id} className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                           <div className="min-w-0">
                             <div className="flex items-center gap-2">
                               <Badge variant="secondary" className="text-xs">{tx.category}</Badge>
@@ -367,7 +368,7 @@ export default function MonthlyHistory() {
                               <p className="text-sm text-muted-foreground truncate mt-0.5">{tx.memo}</p>
                             )}
                           </div>
-                          <span className={`font-semibold text-sm ${tx.type === 'income' ? 'text-emerald-600' : 'text-red-500'}`}>
+                          <span className={`text-sm font-semibold sm:text-right ${tx.type === 'income' ? 'text-emerald-600' : 'text-red-500'}`}>
                             {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount)}
                           </span>
                         </div>

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Plus, Pencil, Trash2, Info, CheckCircle2, Clock, Circle } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -21,7 +21,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useFixedCosts } from '@/hooks/useFixedCosts'
-import { formatCurrency } from '@/lib/format'
+import { useTransactions } from '@/hooks/useTransactions'
+import { formatCurrency, getCurrentMonth } from '@/lib/format'
 import { EXPENSE_CATEGORIES, type ExpenseCategory, type FixedCost } from '@/types'
 
 function FixedCostForm({
@@ -87,13 +88,24 @@ function FixedCostForm({
 type PayDayStatus = 'paid' | 'today' | 'upcoming'
 
 export default function FixedCostsPage() {
-  const { fixedCosts, loading, addFixedCost, updateFixedCost, deleteFixedCost } = useFixedCosts()
+  const currentMonth = getCurrentMonth()
+  const { fixedCosts, loading, addFixedCost, updateFixedCost, deleteFixedCost, applyFixedCosts } = useFixedCosts()
+  const { transactions: currentMonthTransactions } = useTransactions(currentMonth)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingCost, setEditingCost] = useState<FixedCost | null>(null)
+
+  useEffect(() => {
+    applyFixedCosts(currentMonth)
+  }, [applyFixedCosts, currentMonth])
 
   const today = new Date()
   const todayDay = today.getDate()
   const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate()
+  const recordedFixedCostIds = new Set(
+    currentMonthTransactions
+      .filter((tx) => tx.isFixedCost && tx.fixedCostId)
+      .map((tx) => tx.fixedCostId),
+  )
 
   const totalMonthly = fixedCosts.filter((fc) => fc.isActive).reduce((sum, fc) => sum + fc.amount, 0)
 
@@ -116,9 +128,14 @@ export default function FixedCostsPage() {
   const activeCosts = fixedCosts.filter((fc) => fc.isActive).sort((a, b) => a.payDay - b.payDay)
   const inactiveCosts = fixedCosts.filter((fc) => !fc.isActive)
 
-  const paidCount = activeCosts.filter((fc) => getStatus(fc.payDay) === 'paid').length
+  const getPaymentState = (fc: FixedCost): PayDayStatus => {
+    if (recordedFixedCostIds.has(fc.id)) return 'paid'
+    return getStatus(fc.payDay)
+  }
+
+  const paidCount = activeCosts.filter((fc) => getPaymentState(fc) === 'paid').length
   const remainingAmount = activeCosts
-    .filter((fc) => getStatus(fc.payDay) !== 'paid')
+    .filter((fc) => getPaymentState(fc) !== 'paid')
     .reduce((sum, fc) => sum + fc.amount, 0)
 
   if (loading) {
@@ -135,10 +152,15 @@ export default function FixedCostsPage() {
     <div className="space-y-7">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/70 bg-card/80 px-4 py-3 backdrop-blur">
-        <h2 className="text-lg font-semibold">고정비 관리</h2>
+        <div>
+          <h2 className="text-lg font-semibold">고정비 관리</h2>
+          <p className="text-sm text-muted-foreground">
+            반복 지출을 등록해 두면 매달 자동으로 반영돼요.
+          </p>
+        </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={() => setEditingCost(null)}>
+            <Button className="w-full sm:w-auto" onClick={() => setEditingCost(null)}>
               <Plus className="h-4 w-4 mr-1" /> 추가
             </Button>
           </DialogTrigger>
@@ -207,79 +229,78 @@ export default function FixedCostsPage() {
           </CardHeader>
           <CardContent className="divide-y divide-border p-0">
             {activeCosts.map((fc) => {
-              const status = getStatus(fc.payDay)
+              const status = getPaymentState(fc)
               const day = Math.min(fc.payDay, daysInMonth)
               return (
                 <div
                   key={fc.id}
-                  className={`flex items-center gap-3 px-4 py-3 ${
+                  className={`flex flex-col gap-3 px-4 py-3 ${
                     status === 'today' ? 'bg-primary/5' : ''
                   }`}
                 >
-                  {/* Status icon */}
-                  <div className="shrink-0">
-                    {status === 'paid' && <CheckCircle2 className="h-5 w-5 text-emerald-500" />}
-                    {status === 'today' && <Clock className="h-5 w-5 text-primary animate-pulse" />}
-                    {status === 'upcoming' && <Circle className="h-5 w-5 text-muted-foreground/40" />}
-                  </div>
-
-                  {/* Date */}
-                  <div className="w-10 shrink-0 text-center">
-                    <p className={`text-lg font-bold leading-none ${status === 'paid' ? 'text-muted-foreground/50' : status === 'today' ? 'text-primary' : ''}`}>
-                      {day}
-                    </p>
-                    <p className="text-xs text-muted-foreground">일</p>
-                  </div>
-
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className={`font-medium text-sm ${status === 'paid' ? 'text-muted-foreground/60 line-through' : ''}`}>
-                        {fc.name}
-                      </span>
-                      <Badge variant="secondary" className="text-xs">{fc.category}</Badge>
-                      {status === 'today' && (
-                        <Badge className="text-xs bg-primary/15 text-primary border-0">오늘</Badge>
-                      )}
+                  <div className="flex items-start gap-3">
+                    {/* Status icon */}
+                    <div className="shrink-0 pt-0.5">
+                      {status === 'paid' && <CheckCircle2 className="h-5 w-5 text-emerald-500" />}
+                      {status === 'today' && <Clock className="h-5 w-5 text-primary animate-pulse" />}
+                      {status === 'upcoming' && <Circle className="h-5 w-5 text-muted-foreground/40" />}
                     </div>
-                    <p className={`text-xs mt-0.5 ${status === 'paid' ? 'text-muted-foreground/50' : 'text-muted-foreground'}`}>
-                      {getRelativeDayText(fc.payDay)}
-                    </p>
+
+                    {/* Date */}
+                    <div className="w-10 shrink-0 text-center">
+                      <p className={`text-lg font-bold leading-none ${status === 'paid' ? 'text-muted-foreground/50' : status === 'today' ? 'text-primary' : ''}`}>
+                        {day}
+                      </p>
+                      <p className="text-xs text-muted-foreground">일</p>
+                    </div>
+
+                    {/* Info */}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className={`font-medium text-sm ${status === 'paid' ? 'text-muted-foreground/60 line-through' : ''}`}>
+                          {fc.name}
+                        </span>
+                        <Badge variant="secondary" className="text-xs">{fc.category}</Badge>
+                        {status === 'today' && (
+                          <Badge className="text-xs bg-primary/15 text-primary border-0">오늘</Badge>
+                        )}
+                      </div>
+                      <p className={`text-xs mt-0.5 ${status === 'paid' ? 'text-muted-foreground/50' : 'text-muted-foreground'}`}>
+                        {getRelativeDayText(fc.payDay)}
+                      </p>
+                    </div>
                   </div>
 
-                  {/* Amount */}
-                  <div className="shrink-0 text-right">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-t border-dashed border-border/70 pt-3 sm:border-0 sm:pt-0">
                     <p className={`font-semibold text-sm ${status === 'paid' ? 'text-muted-foreground/50' : ''}`}>
                       {formatCurrency(fc.amount)}
                     </p>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex items-center gap-1 shrink-0">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 text-xs text-muted-foreground"
-                      onClick={() => updateFixedCost(fc.id, { isActive: false })}
-                    >
-                      일시중지
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={() => { setEditingCost(fc); setDialogOpen(true) }}
-                    >
-                      <Pencil className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 text-destructive"
-                      onClick={() => deleteFixedCost(fc.id)}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
+                    <div className="flex w-full items-center gap-1 sm:w-auto">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 text-xs sm:flex-none"
+                        onClick={() => updateFixedCost(fc.id, { isActive: false })}
+                      >
+                        일시중지
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => { setEditingCost(fc); setDialogOpen(true) }}
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive"
+                        onClick={() => deleteFixedCost(fc.id)}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
               )
@@ -310,7 +331,7 @@ export default function FixedCostsPage() {
           </CardHeader>
           <CardContent className="divide-y divide-border p-0">
             {inactiveCosts.map((fc) => (
-              <div key={fc.id} className="flex items-center justify-between px-4 py-3 opacity-50">
+              <div key={fc.id} className="flex flex-col gap-3 px-4 py-3 opacity-50 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-sm">{fc.name}</span>
@@ -318,7 +339,7 @@ export default function FixedCostsPage() {
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">매월 {fc.payDay}일 · 자동 기록 꺼짐</p>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center justify-between gap-2 shrink-0 sm:justify-end">
                   <span className="font-semibold text-sm">{formatCurrency(fc.amount)}</span>
                   <Button
                     variant="outline"

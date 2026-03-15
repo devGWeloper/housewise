@@ -14,6 +14,7 @@ const BudgetPage = lazy(() => import('@/pages/Budget'))
 const FixedCostsPage = lazy(() => import('@/pages/FixedCosts'))
 const AssetsPage = lazy(() => import('@/pages/Assets'))
 const MonthlyHistory = lazy(() => import('@/pages/MonthlyHistory'))
+const CalendarPage = lazy(() => import('@/pages/Calendar'))
 const SettingsPage = lazy(() => import('@/pages/Settings'))
 
 function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -51,6 +52,7 @@ export default function App() {
               <Route path="/budget" element={<BudgetPage />} />
               <Route path="/fixed-costs" element={<FixedCostsPage />} />
               <Route path="/assets" element={<AssetsPage />} />
+              <Route path="/calendar" element={<CalendarPage />} />
               <Route path="/monthly-history" element={<MonthlyHistory />} />
               <Route path="/settings" element={<SettingsPage />} />
             </Route>

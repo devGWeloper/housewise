@@ -68,6 +68,8 @@ export interface Transaction {
   createdByName: string
   coupleId: string
   createdAt: Timestamp
+  isFixedCost?: boolean
+  fixedCostId?: string
 }
 
 export interface CategoryBudget {

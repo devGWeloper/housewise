@@ -43,7 +43,7 @@ export default function Onboarding() {
     setError('')
     try {
       await joinCouple(user.uid, displayName, role, inviteCode.toUpperCase())
-      navigate('/', { replace: true })
+      navigate('/setup', { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : '오류가 발생했습니다.')
     } finally {
@@ -66,10 +66,10 @@ export default function Onboarding() {
               </p>
             </div>
             <p className="text-sm text-muted-foreground">
-              파트너가 이 코드로 참여하면 함께 가계부를 사용할 수 있습니다.
+              파트너가 이 코드로 참여하면 자산을 함께 관리할 수 있습니다.
             </p>
-            <Button className="w-full" onClick={() => navigate('/', { replace: true })}>
-              대시보드로 이동
+            <Button className="w-full" onClick={() => navigate('/setup', { replace: true })}>
+              자산 등록하고 시작하기
             </Button>
           </CardContent>
         </Card>
@@ -98,7 +98,7 @@ export default function Onboarding() {
               </p>
             </div>
             <div className="rounded-2xl border border-border/70 bg-background/85 p-5 text-sm text-muted-foreground">
-              연결 후에는 수입/지출, 예산, 자산 데이터가 자동으로 공유됩니다.
+              연결 후에는 통장·자산·부채 현황이 자동으로 공유됩니다.
             </div>
           </div>
 

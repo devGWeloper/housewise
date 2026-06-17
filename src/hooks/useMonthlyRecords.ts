@@ -11,27 +11,34 @@ import {
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { useAuthStore } from '@/stores/authStore'
-import type { AssetRecord, AssetRecordEntry } from '@/types'
+import type { MonthlyRecord, MonthlyRecordEntry } from '@/types'
+
+export interface MonthlyRecordInput {
+  income: number
+  expense: number
+  entries: MonthlyRecordEntry[]
+}
 
 /**
- * 월별 자산 잔액 기록을 관리한다.
- * 컬렉션: couples/{coupleId}/assetRecords/{YYYY-MM} (월별 1문서)
+ * 월별 입력 기록을 관리한다.
+ * 컬렉션: couples/{coupleId}/monthlyRecords/{YYYY-MM} (월별 1문서)
+ * 그 달의 수입/지출 + 각 자산/부채/주식 잔액을 함께 저장한다.
  */
-export function useAssetRecords() {
+export function useMonthlyRecords() {
   const { profile } = useAuthStore()
-  const [records, setRecords] = useState<AssetRecord[]>([])
+  const [records, setRecords] = useState<MonthlyRecord[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (!profile?.coupleId) return
 
     const q = query(
-      collection(db, 'couples', profile.coupleId, 'assetRecords'),
+      collection(db, 'couples', profile.coupleId, 'monthlyRecords'),
       orderBy('month', 'asc'),
     )
 
     const unsub = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as AssetRecord))
+      const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as MonthlyRecord))
       setRecords(data)
       setLoading(false)
     })
@@ -44,7 +51,7 @@ export function useAssetRecords() {
     [records],
   )
 
-  // 해당 월 이전(또는 같은 달이 아닌) 가장 최근 기록
+  // 해당 월 이전 가장 최근 기록
   const getLatestBefore = useCallback(
     (month: string) =>
       [...records]
@@ -56,13 +63,14 @@ export function useAssetRecords() {
   const latestRecord = records.length > 0 ? records[records.length - 1] : undefined
 
   /**
-   * 한 달치 자산 기록을 저장(upsert)한다.
+   * 한 달치 기록을 저장(upsert)한다.
    * - syncAssetBalances=true 이면 각 자산의 현재 balance도 입력값으로 갱신한다.
    *   (이번 달을 업데이트할 때 사용 → 자산/대시보드의 "현재값"이 최신과 일치)
    */
   const saveRecord = useCallback(
-    async (month: string, entries: AssetRecordEntry[], syncAssetBalances: boolean) => {
+    async (month: string, input: MonthlyRecordInput, syncAssetBalances: boolean) => {
       if (!profile?.coupleId) return
+      const { income, expense, entries } = input
 
       const totalAssets = entries
         .filter((e) => e.assetType !== 'debt')
@@ -71,10 +79,12 @@ export function useAssetRecords() {
         .filter((e) => e.assetType === 'debt')
         .reduce((sum, e) => sum + e.balance, 0)
 
-      const recordRef = doc(db, 'couples', profile.coupleId, 'assetRecords', month)
+      const recordRef = doc(db, 'couples', profile.coupleId, 'monthlyRecords', month)
       await setDoc(recordRef, {
         month,
         coupleId: profile.coupleId,
+        income,
+        expense,
         entries,
         totalAssets,
         totalDebt,

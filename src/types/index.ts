@@ -115,3 +115,24 @@ export interface Asset {
     originalAmount?: number
   }
 }
+
+// 월별 자산 잔액 기록 (couples/{coupleId}/assetRecords/{YYYY-MM})
+export interface AssetRecordEntry {
+  assetId: string
+  name: string
+  assetType: AssetType
+  balance: number
+}
+
+export interface AssetRecord {
+  id: string // = month 'YYYY-MM'
+  month: string // 'YYYY-MM'
+  coupleId: string
+  entries: AssetRecordEntry[]
+  totalAssets: number
+  totalDebt: number
+  netWorth: number
+  updatedBy: string
+  updatedByName?: string
+  updatedAt: Timestamp
+}

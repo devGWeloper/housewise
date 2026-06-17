@@ -1,5 +1,7 @@
 import { useState } from 'react'
-import { Plus, Pencil, Trash2 } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { Plus, Pencil, Trash2, Wallet } from 'lucide-react'
+import { LineChart, Line, ResponsiveContainer } from 'recharts'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -21,6 +23,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useAssets } from '@/hooks/useAssets'
+import { useAssetRecords } from '@/hooks/useAssetRecords'
 import { formatCurrency } from '@/lib/format'
 import type { Asset, AssetType } from '@/types'
 
@@ -133,16 +136,39 @@ function AssetForm({
   )
 }
 
+function AssetSparkline({ values, isDebt }: { values: number[]; isDebt: boolean }) {
+  if (values.length < 2) return null
+  const data = values.map((v, i) => ({ i, v }))
+  return (
+    <div className="mt-1 h-7 w-24">
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={data} margin={{ top: 2, right: 2, bottom: 2, left: 2 }}>
+          <Line
+            type="monotone"
+            dataKey="v"
+            stroke={isDebt ? '#ef4444' : '#6366f1'}
+            strokeWidth={1.5}
+            dot={false}
+            isAnimationActive={false}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  )
+}
+
 function AssetList({
   assetType,
   assets,
   onEdit,
   onDelete,
+  getSeries,
 }: {
   assetType: AssetType
   assets: Asset[]
   onEdit: (asset: Asset) => void
   onDelete: (id: string) => void
+  getSeries: (assetId: string) => number[]
 }) {
   const filtered = assets.filter((a) => a.assetType === assetType)
   const total = filtered.reduce((sum, a) => sum + a.balance, 0)
@@ -171,6 +197,7 @@ function AssetList({
                     {asset.details?.monthlyPayment && `월 ${formatCurrency(asset.details.monthlyPayment)} 상환 · `}
                     {asset.details?.maturityDate && `만기 ${asset.details.maturityDate}`}
                   </p>
+                  <AssetSparkline values={getSeries(asset.id)} isDebt={assetType === 'debt'} />
                 </div>
                 <div className="flex items-center justify-between gap-3 sm:justify-end">
                   <span className={`font-semibold text-sm sm:text-base ${assetType === 'debt' ? 'text-red-500' : ''}`}>
@@ -196,9 +223,17 @@ function AssetList({
 
 export default function AssetsPage() {
   const { assets, loading, addAsset, updateAsset, deleteAsset, totalAssets, totalDebt, netWorth } = useAssets()
+  const { records } = useAssetRecords()
   const [activeTab, setActiveTab] = useState<AssetType>('deposit')
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null)
+
+  // 자산별 최근 12개월 잔액 시계열 (기록이 있는 달만)
+  const getSeries = (assetId: string): number[] =>
+    records
+      .slice(-12)
+      .map((r) => r.entries.find((e) => e.assetId === assetId)?.balance)
+      .filter((v): v is number => v !== undefined)
 
   if (loading) {
     return (
@@ -221,6 +256,12 @@ export default function AssetsPage() {
             예금, 투자, 연금, 부채를 한 화면에서 관리해요.
           </p>
         </div>
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+        <Button asChild variant="outline" className="w-full sm:w-auto">
+          <Link to="/asset-update">
+            <Wallet className="h-4 w-4 mr-1" /> 월간 자산 업데이트
+          </Link>
+        </Button>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button className="w-full sm:w-auto" onClick={() => setEditingAsset(null)}>
@@ -247,6 +288,7 @@ export default function AssetsPage() {
             />
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -290,6 +332,7 @@ export default function AssetsPage() {
               assets={assets}
               onEdit={(asset) => { setEditingAsset(asset); setActiveTab(asset.assetType); setDialogOpen(true) }}
               onDelete={deleteAsset}
+              getSeries={getSeries}
             />
           </TabsContent>
         ))}

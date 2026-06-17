@@ -9,13 +9,9 @@ import { Skeleton } from '@/components/ui/skeleton'
 const Login = lazy(() => import('@/pages/Login'))
 const Onboarding = lazy(() => import('@/pages/Onboarding'))
 const Dashboard = lazy(() => import('@/pages/Dashboard'))
-const Transactions = lazy(() => import('@/pages/Transactions'))
-const BudgetPage = lazy(() => import('@/pages/Budget'))
-const FixedCostsPage = lazy(() => import('@/pages/FixedCosts'))
 const AssetsPage = lazy(() => import('@/pages/Assets'))
-const AssetUpdatePage = lazy(() => import('@/pages/AssetUpdate'))
-const MonthlyHistory = lazy(() => import('@/pages/MonthlyHistory'))
-const CalendarPage = lazy(() => import('@/pages/Calendar'))
+const MonthlyEntryPage = lazy(() => import('@/pages/MonthlyEntry'))
+const SetupPage = lazy(() => import('@/pages/Setup'))
 const SettingsPage = lazy(() => import('@/pages/Settings'))
 
 function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -49,13 +45,9 @@ export default function App() {
               }
             >
               <Route path="/" element={<Dashboard />} />
-              <Route path="/transactions" element={<Transactions />} />
-              <Route path="/budget" element={<BudgetPage />} />
-              <Route path="/fixed-costs" element={<FixedCostsPage />} />
+              <Route path="/monthly" element={<MonthlyEntryPage />} />
               <Route path="/assets" element={<AssetsPage />} />
-              <Route path="/asset-update" element={<AssetUpdatePage />} />
-              <Route path="/calendar" element={<CalendarPage />} />
-              <Route path="/monthly-history" element={<MonthlyHistory />} />
+              <Route path="/setup" element={<SetupPage />} />
               <Route path="/settings" element={<SettingsPage />} />
             </Route>
           </Routes>

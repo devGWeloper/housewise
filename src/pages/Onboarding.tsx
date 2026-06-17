@@ -20,7 +20,8 @@ export default function Onboarding() {
   const [loading, setLoading] = useState(false)
 
   if (!user) return <Navigate to="/login" replace />
-  if (profile?.coupleId) return <Navigate to="/" replace />
+  // 커플 생성 직후엔 초대 코드 화면(resultCode)을 보여줘야 하므로 그때는 리다이렉트하지 않는다.
+  if (profile?.coupleId && !resultCode) return <Navigate to="/" replace />
 
   const handleCreate = async () => {
     if (!displayName.trim()) { setError('이름을 입력해주세요.'); return }
@@ -43,7 +44,8 @@ export default function Onboarding() {
     setError('')
     try {
       await joinCouple(user.uid, displayName, role, inviteCode.toUpperCase())
-      navigate('/setup', { replace: true })
+      // 참여자는 이미 등록된 공동 자산을 보게 되므로 바로 홈으로.
+      navigate('/', { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : '오류가 발생했습니다.')
     } finally {

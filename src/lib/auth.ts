@@ -32,6 +32,16 @@ function generateInviteCode(): string {
   return code
 }
 
+// 중복되지 않는 초대 코드를 발급한다 (엉뚱한 커플 참여 방지).
+async function generateUniqueInviteCode(): Promise<string> {
+  for (let i = 0; i < 5; i++) {
+    const code = generateInviteCode()
+    const snap = await getDocs(query(collection(db, 'couples'), where('inviteCode', '==', code)))
+    if (snap.empty) return code
+  }
+  return generateInviteCode()
+}
+
 export async function signUpWithEmail(
   email: string,
   password: string,
@@ -57,7 +67,7 @@ export async function signOut() {
 }
 
 export async function createCouple(uid: string, displayName: string, role: UserRole) {
-  const inviteCode = generateInviteCode()
+  const inviteCode = await generateUniqueInviteCode()
   const coupleRef = doc(collection(db, 'couples'))
   const coupleId = coupleRef.id
 

@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { doc, updateDoc } from 'firebase/firestore'
-import { Copy, Check, LogOut, Users } from 'lucide-react'
+import { Copy, Check, LogOut, Users, Target } from 'lucide-react'
+import { toast } from 'sonner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,14 +11,43 @@ import { Separator } from '@/components/ui/separator'
 import { db } from '@/lib/firebase'
 import { signOut } from '@/lib/auth'
 import { useAuthStore } from '@/stores/authStore'
+import { useGoal } from '@/hooks/useGoal'
+import { formatCurrency } from '@/lib/format'
 import type { UserRole } from '@/types'
 
 export default function SettingsPage() {
   const { profile, couple, user } = useAuthStore()
+  const { settings, saveSettings } = useGoal()
   const [displayName, setDisplayName] = useState(profile?.displayName ?? '')
   const [role, setRole] = useState<UserRole>(profile?.role ?? 'husband')
   const [saving, setSaving] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [goalInput, setGoalInput] = useState('')
+  const [targetDate, setTargetDate] = useState('')
+  const [savingGoal, setSavingGoal] = useState(false)
+
+  // 설정 문서가 로드되면 입력값 채우기
+  useEffect(() => {
+    setGoalInput(settings?.netWorthGoal ? String(settings.netWorthGoal) : '')
+    setTargetDate(settings?.targetDate ?? '')
+  }, [settings?.netWorthGoal, settings?.targetDate])
+
+  const goalNumber = Number(goalInput.replace(/[^\d]/g, '')) || 0
+
+  const handleSaveGoal = async () => {
+    setSavingGoal(true)
+    try {
+      await saveSettings({
+        netWorthGoal: goalNumber,
+        ...(targetDate ? { targetDate } : { targetDate: '' }),
+      })
+      toast.success('순자산 목표를 저장했어요.')
+    } catch {
+      toast.error('목표 저장에 실패했어요.')
+    } finally {
+      setSavingGoal(false)
+    }
+  }
 
   const handleSave = async () => {
     if (!user || !displayName.trim()) return
@@ -76,6 +106,37 @@ export default function SettingsPage() {
           </div>
           <Button onClick={handleSave} disabled={saving} className="w-full">
             {saving ? '저장 중...' : '프로필 저장'}
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Target className="h-4 w-4" />
+            순자산 목표
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label>목표 순자산 (원)</Label>
+            <Input
+              type="text"
+              inputMode="numeric"
+              value={goalNumber ? goalNumber.toLocaleString('ko-KR') : ''}
+              onChange={(e) => setGoalInput(e.target.value)}
+              placeholder="예: 100,000,000"
+            />
+            {goalNumber > 0 && (
+              <p className="text-xs text-muted-foreground">{formatCurrency(goalNumber)}</p>
+            )}
+          </div>
+          <div className="space-y-2">
+            <Label>목표 시점 <span className="text-muted-foreground font-normal">(선택)</span></Label>
+            <Input type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} />
+          </div>
+          <Button onClick={handleSaveGoal} disabled={savingGoal} className="w-full">
+            {savingGoal ? '저장 중...' : '목표 저장'}
           </Button>
         </CardContent>
       </Card>

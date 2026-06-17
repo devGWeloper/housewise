@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { OwnerBadge } from '@/components/OwnerBadge'
+import { RecordStatusBanner } from '@/components/RecordStatusBanner'
 import { useAssets } from '@/hooks/useAssets'
 import { useMonthlyRecords } from '@/hooks/useMonthlyRecords'
 import {
@@ -22,11 +23,9 @@ import {
   ASSET_OWNER_LABELS,
   ASSET_OWNER_COLORS,
   ASSET_TYPE_LABELS,
-  type AssetType,
+  ASSET_TYPE_ORDER,
   type AssetOwner,
 } from '@/types'
-
-const ASSET_TYPE_ORDER: AssetType[] = ['deposit', 'stock', 'pension', 'debt']
 
 function parseAmount(v: string): number {
   const n = Number(v.replace(/[^\d-]/g, ''))
@@ -172,6 +171,9 @@ export default function MonthlyEntryPage() {
           한 달에 한 번, 그 달의 수입·지출과 각 통장·자산·부채 잔액만 기입하면 현황과 추이가 정리돼요.
         </p>
       </div>
+
+      {/* 기록 현황·스트릭 */}
+      <RecordStatusBanner records={records} currentMonth={currentMonth} showInputAction={false} />
 
       {/* 월 선택 + 실시간 요약 (상단 고정) */}
       <div className="sticky top-2 z-20">

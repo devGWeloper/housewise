@@ -13,6 +13,7 @@ import {
   ClipboardList,
   PiggyBank,
   Target,
+  Sparkles,
 } from 'lucide-react'
 import {
   PieChart,
@@ -47,9 +48,17 @@ import {
   getShortMonthLabel,
   formatAxisAmount,
 } from '@/lib/format'
-import { ASSET_OWNER_LABELS, ASSET_OWNER_COLORS } from '@/types'
-
-const assetPieColors = ['#3b82f6', '#8b5cf6', '#f59e0b']
+import { computeInsight, averageSavingsRate } from '@/lib/insights'
+import { RecordStatusBanner } from '@/components/RecordStatusBanner'
+import { GoalCard } from '@/components/GoalCard'
+import {
+  ASSET_OWNER_LABELS,
+  ASSET_OWNER_COLORS,
+  ASSET_TYPE_LABELS,
+  ASSET_TYPE_COLORS,
+  ASSET_TYPE_ORDER,
+  INVESTMENT_TYPES,
+} from '@/types'
 
 export default function Dashboard() {
   const currentMonth = getCurrentMonth()
@@ -67,6 +76,10 @@ export default function Dashboard() {
   const monthSavings = monthIncome - monthExpense
   const savingsRate = monthIncome > 0 ? Math.round((monthSavings / monthIncome) * 100) : null
 
+  // 증감 인사이트 (선택한 달 기준 전월 대비 분해 + 평균 저축률)
+  const insight = computeInsight(records, selectedMonth)
+  const avgSavingsRate = averageSavingsRate(records, 6)
+
   // 최근 12개월 추이
   const trendData = records.slice(-12).map((r) => ({
     label: getShortMonthLabel(r.month),
@@ -80,15 +93,23 @@ export default function Dashboard() {
   const hasDebtHistory = trendData.some((d) => d.totalDebt > 0)
   const hasCashflow = trendData.some((d) => d.income > 0 || d.expense > 0)
 
-  // 자산 구성
-  const depositTotal = assets.filter((a) => a.assetType === 'deposit').reduce((s, a) => s + a.balance, 0)
-  const stockTotal = assets.filter((a) => a.assetType === 'stock').reduce((s, a) => s + a.balance, 0)
-  const pensionTotal = assets.filter((a) => a.assetType === 'pension').reduce((s, a) => s + a.balance, 0)
-  const assetPieData = [
-    { name: '예금/적금', value: depositTotal },
-    { name: '주식/ETF', value: stockTotal },
-    { name: '연금', value: pensionTotal },
-  ].filter((d) => d.value > 0)
+  // 자산 구성 (부채 제외, 종류별 합계 — 자산 종류 추가 시 자동 반영)
+  const assetPieData = ASSET_TYPE_ORDER.filter((t) => t !== 'debt')
+    .map((type) => ({
+      name: ASSET_TYPE_LABELS[type],
+      value: assets.filter((a) => a.assetType === type).reduce((s, a) => s + a.balance, 0),
+      color: ASSET_TYPE_COLORS[type],
+    }))
+    .filter((d) => d.value > 0)
+
+  // 투자 수익률 (원금이 입력된 주식/코인 자산)
+  const investAssets = assets.filter(
+    (a) => INVESTMENT_TYPES.includes(a.assetType) && (a.details?.principal ?? 0) > 0,
+  )
+  const investPrincipal = investAssets.reduce((s, a) => s + (a.details.principal ?? 0), 0)
+  const investValue = investAssets.reduce((s, a) => s + a.balance, 0)
+  const investProfit = investValue - investPrincipal
+  const investRoi = investPrincipal > 0 ? (investProfit / investPrincipal) * 100 : null
 
   // 용도(목적)가 지정된 통장
   const purposedAssets = assets.filter((a) => a.purpose && a.purpose.trim().length > 0)
@@ -183,6 +204,9 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* 기록 현황·스트릭 */}
+      <RecordStatusBanner records={records} currentMonth={currentMonth} />
+
       {/* 순자산 + 자산/부채 */}
       <Card className="border-primary/25 bg-gradient-to-br from-primary/5 to-primary/10 shadow-sm">
         <CardContent className="pt-5 pb-5">
@@ -200,6 +224,9 @@ export default function Dashboard() {
           </div>
         </CardContent>
       </Card>
+
+      {/* 순자산 목표 */}
+      <GoalCard netWorth={netWorth} records={records} />
 
       {/* 명의별 자산 */}
       {(totalAssets > 0 || totalDebt > 0) && (
@@ -284,6 +311,74 @@ export default function Dashboard() {
             <Link to="/monthly"><ClipboardList className="mr-1 h-4 w-4" /> 입력하기</Link>
           </Button>
         </div>
+      )}
+
+      {/* 증감 인사이트 */}
+      {insight && insight.netWorthChange !== null && (
+        <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-primary" /> 이번 달 증감 인사이트
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-end justify-between gap-2">
+              <div>
+                <p className="text-xs text-muted-foreground">전월 대비 순자산</p>
+                <p className={`text-2xl font-bold break-all ${insight.netWorthChange >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                  {insight.netWorthChange >= 0 ? '+' : '−'}{formatCurrency(Math.abs(insight.netWorthChange))}
+                </p>
+              </div>
+              {insight.netWorthChangePct !== null && (
+                <Badge
+                  variant="secondary"
+                  className={`shrink-0 ${insight.netWorthChange >= 0 ? 'text-emerald-600' : 'text-red-500'}`}
+                >
+                  {insight.netWorthChange >= 0 ? (
+                    <TrendingUp className="mr-1 h-3.5 w-3.5" />
+                  ) : (
+                    <TrendingDown className="mr-1 h-3.5 w-3.5" />
+                  )}
+                  {insight.netWorthChangePct >= 0 ? '+' : ''}{insight.netWorthChangePct.toFixed(1)}%
+                </Badge>
+              )}
+            </div>
+
+            {/* 증가 분해: 순자산 증감 = 저축 + 자산가치 변동 */}
+            <div className="rounded-xl bg-muted/40 px-4 py-3 text-sm">
+              <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center">
+                <span className={`font-bold ${insight.netWorthChange >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                  {insight.netWorthChange >= 0 ? '+' : '−'}{formatCurrency(Math.abs(insight.netWorthChange))}
+                </span>
+                <span className="text-muted-foreground">=</span>
+                <span>
+                  저축 <span className="font-semibold">{insight.savings >= 0 ? '+' : '−'}{formatCurrency(Math.abs(insight.savings))}</span>
+                </span>
+                <span className="text-muted-foreground">+</span>
+                <span>
+                  {(insight.valuationChange ?? 0) >= 0 ? '평가이익' : '평가손실'}{' '}
+                  <span className={`font-semibold ${(insight.valuationChange ?? 0) >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                    {(insight.valuationChange ?? 0) >= 0 ? '+' : '−'}{formatCurrency(Math.abs(insight.valuationChange ?? 0))}
+                  </span>
+                </span>
+              </div>
+              <p className="mt-2 text-center text-[11px] text-muted-foreground">
+                저축은 이 달 수입−지출, 평가손익은 그 외 자산가치 변동이에요.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 text-center text-xs">
+              <div className="rounded-lg border border-border/70 py-2">
+                <p className="text-muted-foreground">이 달 저축률</p>
+                <p className="font-semibold">{insight.savingsRate !== null ? `${Math.round(insight.savingsRate)}%` : '—'}</p>
+              </div>
+              <div className="rounded-lg border border-border/70 py-2">
+                <p className="text-muted-foreground">최근 6개월 평균</p>
+                <p className="font-semibold">{avgSavingsRate !== null ? `${Math.round(avgSavingsRate)}%` : '—'}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* 순자산 추이 */}
@@ -384,17 +479,17 @@ export default function Dashboard() {
                 <ResponsiveContainer width="100%" height={180}>
                   <PieChart>
                     <Pie data={assetPieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={64} innerRadius={34}>
-                      {assetPieData.map((_, idx) => (
-                        <Cell key={idx} fill={assetPieColors[idx % assetPieColors.length]} />
+                      {assetPieData.map((entry) => (
+                        <Cell key={entry.name} fill={entry.color} />
                       ))}
                     </Pie>
                     <Tooltip formatter={(value) => formatCurrency(Number(value))} />
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="flex flex-wrap gap-3 mt-2 justify-center">
-                  {assetPieData.map((entry, idx) => (
+                  {assetPieData.map((entry) => (
                     <div key={entry.name} className="flex items-center gap-1 text-xs">
-                      <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: assetPieColors[idx] }} />
+                      <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: entry.color }} />
                       <span>{entry.name}</span>
                       <span className="text-muted-foreground">{formatCurrency(entry.value)}</span>
                     </div>
@@ -442,6 +537,63 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* 투자 수익률 */}
+      {investRoi !== null && (
+        <Card className="shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-violet-500" /> 투자 수익률
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-end justify-between gap-2">
+              <div>
+                <p className="text-xs text-muted-foreground">평가손익</p>
+                <p className={`text-2xl font-bold break-all ${investProfit >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                  {investProfit >= 0 ? '+' : '−'}{formatCurrency(Math.abs(investProfit))}
+                </p>
+              </div>
+              <Badge
+                variant="secondary"
+                className={`shrink-0 ${investProfit >= 0 ? 'text-emerald-600' : 'text-red-500'}`}
+              >
+                {investProfit >= 0 ? (
+                  <TrendingUp className="mr-1 h-3.5 w-3.5" />
+                ) : (
+                  <TrendingDown className="mr-1 h-3.5 w-3.5" />
+                )}
+                {investRoi >= 0 ? '+' : ''}{investRoi.toFixed(1)}%
+              </Badge>
+            </div>
+            <div className="grid grid-cols-2 gap-3 text-center text-xs">
+              <div className="rounded-lg border border-border/70 py-2">
+                <p className="text-muted-foreground">투자원금</p>
+                <p className="font-semibold break-all">{formatCurrency(investPrincipal)}</p>
+              </div>
+              <div className="rounded-lg border border-border/70 py-2">
+                <p className="text-muted-foreground">평가금액</p>
+                <p className="font-semibold break-all">{formatCurrency(investValue)}</p>
+              </div>
+            </div>
+            <div className="space-y-2">
+              {investAssets.map((a) => {
+                const principal = a.details.principal ?? 0
+                const profit = a.balance - principal
+                const roi = principal > 0 ? (profit / principal) * 100 : 0
+                return (
+                  <div key={a.id} className="flex items-center justify-between gap-2 text-sm">
+                    <span className="truncate">{a.name}</span>
+                    <span className={`shrink-0 font-medium ${profit >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                      {roi >= 0 ? '+' : ''}{roi.toFixed(1)}%
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* 대출 상환 현황 */}
       {debtAssets.length > 0 && (

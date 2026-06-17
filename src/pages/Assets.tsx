@@ -22,10 +22,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Badge } from '@/components/ui/badge'
 import { useAssets } from '@/hooks/useAssets'
 import { useAssetRecords } from '@/hooks/useAssetRecords'
+import { useAuthStore } from '@/stores/authStore'
 import { formatCurrency } from '@/lib/format'
-import type { Asset, AssetType } from '@/types'
+import {
+  ASSET_OWNERS,
+  ASSET_OWNER_LABELS,
+  ASSET_OWNER_COLORS,
+  type Asset,
+  type AssetType,
+  type AssetOwner,
+} from '@/types'
 
 const ASSET_TYPE_LABELS: Record<AssetType, string> = {
   deposit: '예금/적금',
@@ -34,18 +43,36 @@ const ASSET_TYPE_LABELS: Record<AssetType, string> = {
   debt: '부채',
 }
 
+function OwnerBadge({ owner }: { owner: AssetOwner }) {
+  return (
+    <Badge
+      variant="outline"
+      className="shrink-0 border-transparent text-[11px] font-medium"
+      style={{
+        backgroundColor: `${ASSET_OWNER_COLORS[owner]}1a`,
+        color: ASSET_OWNER_COLORS[owner],
+      }}
+    >
+      {ASSET_OWNER_LABELS[owner]}
+    </Badge>
+  )
+}
+
 function AssetForm({
   assetType,
   onSubmit,
   onClose,
   initial,
+  defaultOwner,
 }: {
   assetType: AssetType
   onSubmit: (data: Omit<Asset, 'id' | 'coupleId'>) => Promise<void>
   onClose: () => void
   initial?: Asset
+  defaultOwner: AssetOwner
 }) {
   const [name, setName] = useState(initial?.name ?? '')
+  const [owner, setOwner] = useState<AssetOwner>(initial?.owner ?? defaultOwner)
   const [balance, setBalance] = useState(initial?.balance?.toString() ?? '')
   const [bankName, setBankName] = useState(initial?.details?.bankName ?? '')
   const [maturityDate, setMaturityDate] = useState(initial?.details?.maturityDate ?? '')
@@ -70,7 +97,7 @@ function AssetForm({
       details.monthlyPayment = monthlyPayment ? Number(monthlyPayment) : undefined
     }
 
-    await onSubmit({ assetType, name, balance: Number(balance), details })
+    await onSubmit({ assetType, name, owner, balance: Number(balance), details })
     setSaving(false)
     onClose()
   }
@@ -80,6 +107,18 @@ function AssetForm({
       <div className="space-y-2">
         <Label>{assetType === 'deposit' ? '계좌 별명' : assetType === 'stock' ? '종목명' : assetType === 'pension' ? '연금명' : '대출명'}</Label>
         <Input value={name} onChange={(e) => setName(e.target.value)} required />
+      </div>
+
+      <div className="space-y-2">
+        <Label>명의</Label>
+        <Select value={owner} onValueChange={(v) => setOwner(v as AssetOwner)}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {ASSET_OWNERS.map((o) => (
+              <SelectItem key={o} value={o}>{ASSET_OWNER_LABELS[o]}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="space-y-2">
@@ -189,7 +228,10 @@ function AssetList({
             {filtered.map((asset) => (
               <div key={asset.id} className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
-                  <p className="font-medium">{asset.name}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="truncate font-medium">{asset.name}</p>
+                    <OwnerBadge owner={asset.owner ?? 'joint'} />
+                  </div>
                   <p className="mt-0.5 break-words text-xs text-muted-foreground">
                     {asset.details?.bankName && `${asset.details.bankName} · `}
                     {asset.details?.pensionType && `${asset.details.pensionType} · `}
@@ -222,8 +264,10 @@ function AssetList({
 }
 
 export default function AssetsPage() {
-  const { assets, loading, addAsset, updateAsset, deleteAsset, totalAssets, totalDebt, netWorth } = useAssets()
+  const { assets, loading, addAsset, updateAsset, deleteAsset, totalAssets, totalDebt, netWorth, ownerTotals } = useAssets()
   const { records } = useAssetRecords()
+  const { profile } = useAuthStore()
+  const defaultOwner: AssetOwner = profile?.role ?? 'joint'
   const [activeTab, setActiveTab] = useState<AssetType>('deposit')
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null)
@@ -277,6 +321,7 @@ export default function AssetsPage() {
             <AssetForm
               assetType={editingAsset?.assetType ?? activeTab}
               initial={editingAsset ?? undefined}
+              defaultOwner={defaultOwner}
               onSubmit={async (data) => {
                 if (editingAsset) {
                   await updateAsset(editingAsset.id, data)
@@ -311,6 +356,26 @@ export default function AssetsPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardContent className="pt-4 pb-4">
+          <p className="mb-3 text-xs text-muted-foreground">명의별 순자산</p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            {ownerTotals.map((ot) => (
+              <div key={ot.owner} className="rounded-xl border border-border/70 px-3 py-2.5">
+                <div className="flex items-center justify-between">
+                  <OwnerBadge owner={ot.owner} />
+                  <span className="text-sm font-bold break-all">{formatCurrency(ot.net)}</span>
+                </div>
+                <div className="mt-1.5 flex justify-between text-[11px] text-muted-foreground">
+                  <span>자산 {formatCurrency(ot.assets)}</span>
+                  {ot.debt > 0 && <span className="text-red-500">부채 {formatCurrency(ot.debt)}</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
 
       <Tabs
         value={activeTab}

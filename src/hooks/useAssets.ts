@@ -10,7 +10,14 @@ import {
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { useAuthStore } from '@/stores/authStore'
-import type { Asset, AssetType } from '@/types'
+import { ASSET_OWNERS, type Asset, type AssetType, type AssetOwner } from '@/types'
+
+export interface OwnerTotal {
+  owner: AssetOwner
+  assets: number
+  debt: number
+  net: number
+}
 
 export function useAssets() {
   const { profile } = useAuthStore()
@@ -73,6 +80,18 @@ export function useAssets() {
 
   const netWorth = totalAssets - totalDebt
 
+  // 명의별(남편/아내/공동) 합계
+  const ownerTotals: OwnerTotal[] = ASSET_OWNERS.map((owner) => {
+    const owned = assets.filter((a) => (a.owner ?? 'joint') === owner)
+    const assetSum = owned
+      .filter((a) => a.assetType !== 'debt')
+      .reduce((sum, a) => sum + a.balance, 0)
+    const debtSum = owned
+      .filter((a) => a.assetType === 'debt')
+      .reduce((sum, a) => sum + a.balance, 0)
+    return { owner, assets: assetSum, debt: debtSum, net: assetSum - debtSum }
+  })
+
   return {
     assets,
     loading,
@@ -83,5 +102,6 @@ export function useAssets() {
     totalAssets,
     totalDebt,
     netWorth,
+    ownerTotals,
   }
 }

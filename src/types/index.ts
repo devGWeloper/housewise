@@ -98,11 +98,29 @@ export interface FixedCost {
 
 export type AssetType = 'deposit' | 'stock' | 'pension' | 'debt'
 
+// 자산 명의 (맞벌이 부부 공동 관리 - 누구 통장인지)
+export type AssetOwner = 'husband' | 'wife' | 'joint'
+
+export const ASSET_OWNER_LABELS: Record<AssetOwner, string> = {
+  husband: '남편',
+  wife: '아내',
+  joint: '공동',
+}
+
+export const ASSET_OWNER_COLORS: Record<AssetOwner, string> = {
+  husband: '#3b82f6',
+  wife: '#ec4899',
+  joint: '#14b8a6',
+}
+
+export const ASSET_OWNERS: AssetOwner[] = ['husband', 'wife', 'joint']
+
 export interface Asset {
   id: string
   assetType: AssetType
   name: string
   balance: number
+  owner: AssetOwner
   coupleId: string
   details: {
     bankName?: string
@@ -121,6 +139,7 @@ export interface AssetRecordEntry {
   assetId: string
   name: string
   assetType: AssetType
+  owner: AssetOwner
   balance: number
 }
 

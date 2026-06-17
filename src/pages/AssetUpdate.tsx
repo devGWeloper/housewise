@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Badge } from '@/components/ui/badge'
 import { useAssets } from '@/hooks/useAssets'
 import { useAssetRecords } from '@/hooks/useAssetRecords'
 import {
@@ -15,7 +16,28 @@ import {
   getPrevMonth,
   getNextMonth,
 } from '@/lib/format'
-import type { AssetType } from '@/types'
+import {
+  ASSET_OWNERS,
+  ASSET_OWNER_LABELS,
+  ASSET_OWNER_COLORS,
+  type AssetType,
+  type AssetOwner,
+} from '@/types'
+
+function OwnerBadge({ owner }: { owner: AssetOwner }) {
+  return (
+    <Badge
+      variant="outline"
+      className="shrink-0 border-transparent text-[10px] font-medium"
+      style={{
+        backgroundColor: `${ASSET_OWNER_COLORS[owner]}1a`,
+        color: ASSET_OWNER_COLORS[owner],
+      }}
+    >
+      {ASSET_OWNER_LABELS[owner]}
+    </Badge>
+  )
+}
 
 const ASSET_TYPE_LABELS: Record<AssetType, string> = {
   deposit: '예금/적금',
@@ -72,15 +94,22 @@ export default function AssetUpdatePage() {
     [assets],
   )
 
-  const { liveAssets, liveDebt } = useMemo(() => {
+  const { liveAssets, liveDebt, ownerNet } = useMemo(() => {
     let assetSum = 0
     let debtSum = 0
+    const net: Record<AssetOwner, number> = { husband: 0, wife: 0, joint: 0 }
     for (const asset of assets) {
       const amount = parseAmount(values[asset.id] ?? '0')
-      if (asset.assetType === 'debt') debtSum += amount
-      else assetSum += amount
+      const owner = asset.owner ?? 'joint'
+      if (asset.assetType === 'debt') {
+        debtSum += amount
+        net[owner] -= amount
+      } else {
+        assetSum += amount
+        net[owner] += amount
+      }
     }
-    return { liveAssets: assetSum, liveDebt: debtSum }
+    return { liveAssets: assetSum, liveDebt: debtSum, ownerNet: net }
   }, [assets, values])
   const liveNetWorth = liveAssets - liveDebt
 
@@ -94,6 +123,7 @@ export default function AssetUpdatePage() {
         assetId: asset.id,
         name: asset.name,
         assetType: asset.assetType,
+        owner: asset.owner ?? 'joint',
         balance: parseAmount(values[asset.id] ?? '0'),
       }))
       await saveRecord(month, entries, isCurrentMonth)
@@ -179,6 +209,20 @@ export default function AssetUpdatePage() {
                       부채 <span className="font-semibold text-red-500">{formatCurrency(liveDebt)}</span>
                     </span>
                   </div>
+                  <div className="mt-2 flex flex-wrap justify-center gap-1.5">
+                    {ASSET_OWNERS.map((o) => (
+                      <span
+                        key={o}
+                        className="rounded-full px-2 py-0.5 text-[11px] font-medium"
+                        style={{
+                          backgroundColor: `${ASSET_OWNER_COLORS[o]}1a`,
+                          color: ASSET_OWNER_COLORS[o],
+                        }}
+                      >
+                        {ASSET_OWNER_LABELS[o]} {formatCurrency(ownerNet[o])}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -202,7 +246,10 @@ export default function AssetUpdatePage() {
                           className="flex items-center justify-between gap-3 px-4 py-3"
                         >
                           <div className="min-w-0">
-                            <p className="truncate font-medium">{asset.name}</p>
+                            <div className="flex items-center gap-1.5">
+                              <p className="truncate font-medium">{asset.name}</p>
+                              <OwnerBadge owner={asset.owner ?? 'joint'} />
+                            </div>
                             {asset.details?.bankName && (
                               <p className="text-xs text-muted-foreground truncate">
                                 {asset.details.bankName}

@@ -11,6 +11,7 @@ import {
   CircleDashed,
   Activity,
   Wallet,
+  Users,
 } from 'lucide-react'
 import {
   PieChart,
@@ -44,7 +45,12 @@ import {
   getShortMonthLabel,
   formatAxisAmount,
 } from '@/lib/format'
-import { CATEGORY_COLORS, type ExpenseCategory } from '@/types'
+import {
+  CATEGORY_COLORS,
+  ASSET_OWNER_LABELS,
+  ASSET_OWNER_COLORS,
+  type ExpenseCategory,
+} from '@/types'
 
 const assetColors = ['#3b82f6', '#8b5cf6', '#f59e0b']
 const assetFlowColors = {
@@ -58,7 +64,7 @@ export default function Dashboard() {
   const currentMonth = getCurrentMonth()
   const [selectedMonth, setSelectedMonth] = useState(currentMonth)
   const { transactions, loading: txLoading } = useTransactions(selectedMonth)
-  const { totalAssets, totalDebt, netWorth, loading: assetsLoading, assets } = useAssets()
+  const { totalAssets, totalDebt, netWorth, loading: assetsLoading, assets, ownerTotals } = useAssets()
   const { records: assetRecords, loading: recordsLoading } = useAssetRecords()
   const { fixedCosts, applyFixedCosts } = useFixedCosts()
 
@@ -226,6 +232,55 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* 명의별 자산 (남편/아내/공동) */}
+      {(totalAssets > 0 || totalDebt > 0) && (
+        <Card className="shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              명의별 자산
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              {ownerTotals.map((ot) => (
+                <div
+                  key={ot.owner}
+                  className="rounded-xl border border-border/70 px-3 py-3"
+                  style={{ borderLeft: `3px solid ${ASSET_OWNER_COLORS[ot.owner]}` }}
+                >
+                  <p className="text-xs font-medium" style={{ color: ASSET_OWNER_COLORS[ot.owner] }}>
+                    {ASSET_OWNER_LABELS[ot.owner]}
+                  </p>
+                  <p className="mt-1 text-lg font-bold break-all">{formatCurrency(ot.net)}</p>
+                  <div className="mt-1 flex justify-between text-[11px] text-muted-foreground">
+                    <span>자산 {formatCurrency(ot.assets)}</span>
+                    {ot.debt > 0 && <span className="text-red-500">부채 {formatCurrency(ot.debt)}</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+            {/* 명의별 비중 막대 */}
+            {netWorth > 0 && (
+              <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-muted">
+                {ownerTotals
+                  .filter((ot) => ot.net > 0)
+                  .map((ot) => (
+                    <div
+                      key={ot.owner}
+                      style={{
+                        width: `${(ot.net / netWorth) * 100}%`,
+                        backgroundColor: ASSET_OWNER_COLORS[ot.owner],
+                      }}
+                      title={`${ASSET_OWNER_LABELS[ot.owner]}: ${formatCurrency(ot.net)}`}
+                    />
+                  ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* 순자산 추이 (최근 12개월) */}
       <Card className="shadow-sm">

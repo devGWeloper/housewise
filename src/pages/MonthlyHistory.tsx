@@ -29,15 +29,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useTransactions } from '@/hooks/useTransactions'
 import { useMonthlyTrend } from '@/hooks/useMonthlyTrend'
 import { useBudget } from '@/hooks/useBudget'
-import { formatCurrency, getCurrentMonth, getMonthLabel, getPrevMonth, getNextMonth } from '@/lib/format'
+import { formatCurrency, getCurrentMonth, getMonthLabel, getPrevMonth, getNextMonth, formatAxisAmount } from '@/lib/format'
 import { CATEGORY_COLORS, type ExpenseCategory } from '@/types'
-
-function formatAxisAmount(v: number) {
-  if (v >= 10000000) return `${(v / 10000000).toFixed(0)}천만`
-  if (v >= 1000000) return `${(v / 1000000).toFixed(0)}백만`
-  if (v >= 10000) return `${(v / 10000).toFixed(0)}만`
-  return `${v}`
-}
 
 export default function MonthlyHistory() {
   const [month, setMonth] = useState(getCurrentMonth())

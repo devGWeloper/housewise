@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   Settings,
   Target,
+  Wallet,
 } from 'lucide-react'
 
 export interface NavItem {
@@ -51,6 +52,13 @@ export const primaryNavItems: NavItem[] = [
 
 export const secondaryNavItems: NavItem[] = [
   {
+    to: '/asset-update',
+    label: '자산 업데이트',
+    description: '한 달에 한 번, 자산·부채 잔액을 기록해요.',
+    icon: Wallet,
+    section: 'manage',
+  },
+  {
     to: '/fixed-costs',
     label: '고정비',
     description: '월세, 보험, 구독료처럼 반복 지출을 관리해요.',
@@ -83,16 +91,25 @@ export const utilityNavItems: NavItem[] = [
   },
 ]
 
+const navByPath = (to: string): NavItem =>
+  [...primaryNavItems, ...secondaryNavItems].find((item) => item.to === to)!
+
 export const desktopNavSections = [
   {
     id: 'overview',
     title: '둘러보기',
-    items: [primaryNavItems[0], primaryNavItems[2], secondaryNavItems[2]],
+    items: [navByPath('/'), navByPath('/calendar'), navByPath('/monthly-history')],
   },
   {
     id: 'manage',
     title: '관리',
-    items: [primaryNavItems[1], secondaryNavItems[0], secondaryNavItems[1], primaryNavItems[3]],
+    items: [
+      navByPath('/transactions'),
+      navByPath('/assets'),
+      navByPath('/asset-update'),
+      navByPath('/fixed-costs'),
+      navByPath('/budget'),
+    ],
   },
 ] as const
 

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { differenceInDays, isValid, parseISO } from 'date-fns'
 import {
   TrendingUp,
@@ -8,8 +9,24 @@ import {
   Landmark,
   CalendarClock,
   CircleDashed,
+  Activity,
+  Wallet,
+  Users,
 } from 'lucide-react'
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts'
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  AreaChart,
+  Area,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+} from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -17,9 +34,23 @@ import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useTransactions } from '@/hooks/useTransactions'
 import { useAssets } from '@/hooks/useAssets'
+import { useAssetRecords } from '@/hooks/useAssetRecords'
 import { useFixedCosts } from '@/hooks/useFixedCosts'
-import { formatCurrency, getCurrentMonth, getMonthLabel, getPrevMonth, getNextMonth } from '@/lib/format'
-import { CATEGORY_COLORS, type ExpenseCategory } from '@/types'
+import {
+  formatCurrency,
+  getCurrentMonth,
+  getMonthLabel,
+  getPrevMonth,
+  getNextMonth,
+  getShortMonthLabel,
+  formatAxisAmount,
+} from '@/lib/format'
+import {
+  CATEGORY_COLORS,
+  ASSET_OWNER_LABELS,
+  ASSET_OWNER_COLORS,
+  type ExpenseCategory,
+} from '@/types'
 
 const assetColors = ['#3b82f6', '#8b5cf6', '#f59e0b']
 const assetFlowColors = {
@@ -33,8 +64,19 @@ export default function Dashboard() {
   const currentMonth = getCurrentMonth()
   const [selectedMonth, setSelectedMonth] = useState(currentMonth)
   const { transactions, loading: txLoading } = useTransactions(selectedMonth)
-  const { totalAssets, totalDebt, netWorth, loading: assetsLoading, assets } = useAssets()
+  const { totalAssets, totalDebt, netWorth, loading: assetsLoading, assets, ownerTotals } = useAssets()
+  const { records: assetRecords, loading: recordsLoading } = useAssetRecords()
   const { fixedCosts, applyFixedCosts } = useFixedCosts()
+
+  // 최근 12개월 자산/부채 추이
+  const trendData = assetRecords.slice(-12).map((r) => ({
+    month: r.month,
+    label: getShortMonthLabel(r.month),
+    netWorth: r.netWorth,
+    totalAssets: r.totalAssets,
+    totalDebt: r.totalDebt,
+  }))
+  const hasDebtHistory = trendData.some((d) => d.totalDebt > 0)
 
   useEffect(() => {
     if (selectedMonth === currentMonth) {
@@ -114,7 +156,7 @@ export default function Dashboard() {
     { name: '연금', value: pensionTotal },
   ].filter((d) => d.value > 0)
 
-  const loading = txLoading || assetsLoading
+  const loading = txLoading || assetsLoading || recordsLoading
 
   if (loading) {
     return (
@@ -190,6 +232,109 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* 명의별 자산 (남편/아내/공동) */}
+      {(totalAssets > 0 || totalDebt > 0) && (
+        <Card className="shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              명의별 자산
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              {ownerTotals.map((ot) => (
+                <div
+                  key={ot.owner}
+                  className="rounded-xl border border-border/70 px-3 py-3"
+                  style={{ borderLeft: `3px solid ${ASSET_OWNER_COLORS[ot.owner]}` }}
+                >
+                  <p className="text-xs font-medium" style={{ color: ASSET_OWNER_COLORS[ot.owner] }}>
+                    {ASSET_OWNER_LABELS[ot.owner]}
+                  </p>
+                  <p className="mt-1 text-lg font-bold break-all">{formatCurrency(ot.net)}</p>
+                  <div className="mt-1 flex justify-between text-[11px] text-muted-foreground">
+                    <span>자산 {formatCurrency(ot.assets)}</span>
+                    {ot.debt > 0 && <span className="text-red-500">부채 {formatCurrency(ot.debt)}</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+            {/* 명의별 비중 막대 */}
+            {netWorth > 0 && (
+              <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-muted">
+                {ownerTotals
+                  .filter((ot) => ot.net > 0)
+                  .map((ot) => (
+                    <div
+                      key={ot.owner}
+                      style={{
+                        width: `${(ot.net / netWorth) * 100}%`,
+                        backgroundColor: ASSET_OWNER_COLORS[ot.owner],
+                      }}
+                      title={`${ASSET_OWNER_LABELS[ot.owner]}: ${formatCurrency(ot.net)}`}
+                    />
+                  ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 순자산 추이 (최근 12개월) */}
+      <Card className="shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Activity className="h-4 w-4" />
+            순자산 추이
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {trendData.length === 0 ? (
+            <div className="flex flex-col items-center gap-3 py-8 text-center">
+              <p className="text-sm text-muted-foreground">
+                아직 기록된 자산 추이가 없어요.<br />
+                매달 자산 잔액을 기록하면 순자산 변화가 그래프로 쌓여요.
+              </p>
+              <Button asChild size="sm">
+                <Link to="/asset-update">
+                  <Wallet className="mr-1 h-4 w-4" /> 월간 자산 업데이트
+                </Link>
+              </Button>
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={220}>
+              <AreaChart data={trendData} margin={{ top: 4, right: 8, left: 8, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="netWorthFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.35} />
+                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                <XAxis dataKey="label" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+                <YAxis
+                  tickFormatter={formatAxisAmount}
+                  tick={{ fontSize: 11 }}
+                  tickLine={false}
+                  axisLine={false}
+                  width={44}
+                />
+                <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                <Area
+                  type="monotone"
+                  dataKey="netWorth"
+                  name="순자산"
+                  stroke="#6366f1"
+                  strokeWidth={2}
+                  fill="url(#netWorthFill)"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Card className="shadow-sm">
@@ -337,6 +482,41 @@ export default function Dashboard() {
                 )
               })}
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {hasDebtHistory && (
+        <Card className="shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <TrendingDown className="h-4 w-4 text-red-500" />
+              부채 잔액 추이
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={200}>
+              <LineChart data={trendData} margin={{ top: 4, right: 8, left: 8, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                <XAxis dataKey="label" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+                <YAxis
+                  tickFormatter={formatAxisAmount}
+                  tick={{ fontSize: 11 }}
+                  tickLine={false}
+                  axisLine={false}
+                  width={44}
+                />
+                <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                <Line
+                  type="monotone"
+                  dataKey="totalDebt"
+                  name="부채 잔액"
+                  stroke="#ef4444"
+                  strokeWidth={2}
+                  dot={{ r: 3 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
           </CardContent>
         </Card>
       )}

@@ -26,13 +26,13 @@ export function Header() {
       <div className="flex h-16 items-center justify-between px-3 sm:px-4 md:px-8">
         <div className="min-w-0">
           <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground/75 md:hidden">
-            Housewise
+            HouseWise
           </p>
           <h1 className="truncate text-base font-semibold text-primary sm:text-lg">
-            {currentNavItem?.label ?? '우리 가계부'}
+            {currentNavItem?.label ?? 'HouseWise'}
           </h1>
           <p className="hidden truncate text-sm text-muted-foreground md:block">
-            {currentNavItem?.description ?? '오늘도 함께 만드는 건강한 가계 습관'}
+            {currentNavItem?.description ?? '우리 부부 자산을 한눈에 관리해요'}
           </p>
         </div>
         <DropdownMenu>

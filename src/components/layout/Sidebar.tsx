@@ -7,8 +7,8 @@ export function Sidebar() {
     <aside className="hidden md:flex md:fixed md:inset-y-0 md:w-64 md:flex-col border-r border-sidebar-border/80 bg-sidebar/92 backdrop-blur-md">
       <div className="flex h-16 items-center px-6 border-b border-sidebar-border/80">
         <div>
-          <p className="text-xs font-medium tracking-[0.2em] text-sidebar-foreground/60">HOUSEWISE</p>
-          <h1 className="text-xl font-semibold text-sidebar-primary">우리 가계부</h1>
+          <p className="text-xs font-medium tracking-[0.2em] text-sidebar-foreground/60">자산 관리</p>
+          <h1 className="text-xl font-semibold text-sidebar-primary">HouseWise</h1>
         </div>
       </div>
       <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-5">

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Navigate } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -19,10 +19,7 @@ export default function Login() {
   const navigate = useNavigate()
   const { user } = useAuthStore()
 
-  if (user) {
-    navigate('/', { replace: true })
-    return null
-  }
+  if (user) return <Navigate to="/" replace />
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -88,15 +85,15 @@ export default function Login() {
                 함께하는 계획
               </h1>
               <p className="mt-4 text-muted-foreground">
-                신혼부부를 위한 공유 가계부. 수입/지출, 예산, 고정비, 자산을
-                한 화면에서 깔끔하게 관리하세요.
+                맞벌이 부부를 위한 공동 자산 관리. 통장·투자·연금·부채를
+                한 화면에서 함께 관리하세요.
               </p>
             </div>
             <div className="rounded-2xl border border-border/70 bg-background/85 p-5">
-              <p className="text-sm text-muted-foreground">이번 달 목표 체크</p>
-              <p className="mt-2 text-lg font-semibold">예산 80% 이내 유지하기</p>
+              <p className="text-sm text-muted-foreground">한 달에 한 번, 5분</p>
+              <p className="mt-2 text-lg font-semibold">잔액만 입력하면 끝</p>
               <p className="mt-2 text-sm text-muted-foreground">
-                둘이 함께 같은 데이터를 보면서 빠르게 의사결정할 수 있어요.
+                둘이 같은 자산 현황을 보면서 추이까지 한눈에 확인해요.
               </p>
             </div>
           </div>

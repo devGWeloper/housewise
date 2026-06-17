@@ -101,8 +101,8 @@ export default function Login() {
           <div className="p-5 sm:p-8 md:p-10">
             <Card className="w-full border-none bg-transparent shadow-none">
               <CardHeader className="px-0 text-center lg:text-left">
-                <CardTitle className="text-3xl font-bold text-primary">우리 가계부</CardTitle>
-                <CardDescription>공유 재무 습관을 시작해보세요</CardDescription>
+                <CardTitle className="text-3xl font-bold text-primary">HouseWise</CardTitle>
+                <CardDescription>부부 공동 자산 관리를 시작해보세요</CardDescription>
               </CardHeader>
               <CardContent className="px-0">
                 <form onSubmit={handleSubmit} className="space-y-4">

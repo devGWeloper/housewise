@@ -32,13 +32,6 @@ export function getNextMonth(month: string): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
 }
 
-// 'YYYY-MM'에 n개월을 더한 월 (n 음수 가능)
-export function addMonths(month: string, n: number): string {
-  const [year, mon] = month.split('-').map(Number)
-  const date = new Date(year, mon - 1 + n, 1)
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-}
-
 // 'YYYY-MM' -> 'N월' (차트 축/짧은 라벨용)
 export function getShortMonthLabel(month: string): string {
   const mon = month.split('-')[1]

@@ -19,14 +19,7 @@ import { useAssets } from '@/hooks/useAssets'
 import { useMonthlyRecords } from '@/hooks/useMonthlyRecords'
 import { useAuthStore } from '@/stores/authStore'
 import { formatCurrency } from '@/lib/format'
-import {
-  ASSET_TYPE_LABELS,
-  ASSET_TYPE_ORDER,
-  INVESTMENT_TYPES,
-  type Asset,
-  type AssetType,
-  type AssetOwner,
-} from '@/types'
+import { ASSET_TYPE_LABELS, type Asset, type AssetType, type AssetOwner } from '@/types'
 
 function AssetSparkline({ values, isDebt }: { values: number[]; isDebt: boolean }) {
   if (values.length < 2) return null
@@ -95,19 +88,6 @@ function AssetList({
                     {asset.details?.monthlyPayment && `월 ${formatCurrency(asset.details.monthlyPayment)} 상환 · `}
                     {asset.details?.maturityDate && `만기 ${asset.details.maturityDate}`}
                   </p>
-                  {INVESTMENT_TYPES.includes(assetType) && (asset.details?.principal ?? 0) > 0 && (() => {
-                    const principal = asset.details.principal!
-                    const profit = asset.balance - principal
-                    const roi = (profit / principal) * 100
-                    return (
-                      <p className="mt-0.5 text-xs text-muted-foreground">
-                        원금 {formatCurrency(principal)} · 수익률{' '}
-                        <span className={`font-semibold ${profit >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                          {roi >= 0 ? '+' : ''}{roi.toFixed(1)}%
-                        </span>
-                      </p>
-                    )
-                  })()}
                   <AssetSparkline values={getSeries(asset.id)} isDebt={assetType === 'debt'} />
                 </div>
                 <div className="flex items-center justify-between gap-3 sm:justify-end">
@@ -251,15 +231,15 @@ export default function AssetsPage() {
         onValueChange={(v) => setActiveTab(v as AssetType)}
         className="gap-4"
       >
-        <TabsList className="grid h-auto w-full grid-cols-3 gap-1 sm:grid-cols-4">
-          {ASSET_TYPE_ORDER.map((type) => (
+        <TabsList className="grid h-auto w-full grid-cols-2 gap-1 sm:grid-cols-4">
+          {(Object.entries(ASSET_TYPE_LABELS) as [AssetType, string][]).map(([type, label]) => (
             <TabsTrigger key={type} value={type} className="min-h-10 whitespace-normal text-xs sm:text-sm">
-              {ASSET_TYPE_LABELS[type]}
+              {label}
             </TabsTrigger>
           ))}
         </TabsList>
 
-        {ASSET_TYPE_ORDER.map((type) => (
+        {(Object.keys(ASSET_TYPE_LABELS) as AssetType[]).map((type) => (
           <TabsContent key={type} value={type}>
             <AssetList
               assetType={type}

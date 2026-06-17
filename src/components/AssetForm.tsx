@@ -13,32 +13,12 @@ import {
   ASSET_OWNERS,
   ASSET_OWNER_LABELS,
   ASSET_TYPE_LABELS,
-  ASSET_TYPE_ORDER,
-  INVESTMENT_TYPES,
   type Asset,
   type AssetType,
   type AssetOwner,
 } from '@/types'
 
-const NAME_LABELS: Record<AssetType, string> = {
-  deposit: '계좌 별명',
-  cash: '현금 이름',
-  stock: '종목명',
-  crypto: '코인명',
-  pension: '연금명',
-  realestate: '부동산명',
-  debt: '대출명',
-}
-
-const BALANCE_LABELS: Record<AssetType, string> = {
-  deposit: '잔액',
-  cash: '금액',
-  stock: '평가금액',
-  crypto: '평가금액',
-  pension: '납입 누계',
-  realestate: '현재 시세',
-  debt: '잔액',
-}
+const ASSET_TYPES: AssetType[] = ['deposit', 'stock', 'pension', 'debt']
 
 export function AssetForm({
   assetType: fixedType,
@@ -65,10 +45,7 @@ export function AssetForm({
   const [pensionType, setPensionType] = useState<'국민연금' | '개인연금'>(initial?.details?.pensionType ?? '국민연금')
   const [monthlyPayment, setMonthlyPayment] = useState(initial?.details?.monthlyPayment?.toString() ?? '')
   const [originalAmount, setOriginalAmount] = useState(initial?.details?.originalAmount?.toString() ?? '')
-  const [principal, setPrincipal] = useState(initial?.details?.principal?.toString() ?? '')
   const [saving, setSaving] = useState(false)
-
-  const isInvestment = INVESTMENT_TYPES.includes(assetType)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -84,8 +61,6 @@ export function AssetForm({
     } else if (assetType === 'debt') {
       details.originalAmount = originalAmount ? Number(originalAmount) : undefined
       details.monthlyPayment = monthlyPayment ? Number(monthlyPayment) : undefined
-    } else if (isInvestment) {
-      details.principal = principal ? Number(principal) : undefined
     }
 
     const data: Omit<Asset, 'id' | 'coupleId'> = { assetType, name, owner, balance: Number(balance), details }
@@ -104,7 +79,7 @@ export function AssetForm({
           <Select value={assetType} onValueChange={(v) => setAssetType(v as AssetType)}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
-              {ASSET_TYPE_ORDER.map((t) => (
+              {ASSET_TYPES.map((t) => (
                 <SelectItem key={t} value={t}>{ASSET_TYPE_LABELS[t]}</SelectItem>
               ))}
             </SelectContent>
@@ -113,7 +88,7 @@ export function AssetForm({
       )}
 
       <div className="space-y-2">
-        <Label>{NAME_LABELS[assetType]}</Label>
+        <Label>{assetType === 'deposit' ? '계좌 별명' : assetType === 'stock' ? '종목명' : assetType === 'pension' ? '연금명' : '대출명'}</Label>
         <Input value={name} onChange={(e) => setName(e.target.value)} required />
       </div>
 
@@ -139,23 +114,9 @@ export function AssetForm({
       </div>
 
       <div className="space-y-2">
-        <Label>{BALANCE_LABELS[assetType]}</Label>
+        <Label>{assetType === 'stock' ? '평가금액' : assetType === 'pension' ? '납입 누계' : '잔액'}</Label>
         <Input type="number" inputMode="numeric" value={balance} onChange={(e) => setBalance(e.target.value)} min="0" required />
       </div>
-
-      {isInvestment && (
-        <div className="space-y-2">
-          <Label>투자원금 <span className="text-muted-foreground font-normal">(선택)</span></Label>
-          <Input
-            type="number"
-            inputMode="numeric"
-            value={principal}
-            onChange={(e) => setPrincipal(e.target.value)}
-            placeholder="원금을 넣으면 수익률이 계산돼요"
-            min="0"
-          />
-        </div>
-      )}
 
       {assetType === 'deposit' && (
         <>

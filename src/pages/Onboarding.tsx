@@ -4,7 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { createCouple, joinCouple } from '@/lib/auth'
+import { Copy, Check } from 'lucide-react'
+import { toast } from 'sonner'
+import { createCouple, joinCouple, authErrorMessage } from '@/lib/auth'
 import { useAuthStore } from '@/stores/authStore'
 import type { UserRole } from '@/types'
 
@@ -16,8 +18,20 @@ export default function Onboarding() {
   const [role, setRole] = useState<UserRole>('husband')
   const [inviteCode, setInviteCode] = useState('')
   const [resultCode, setResultCode] = useState('')
+  const [copied, setCopied] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(resultCode)
+      setCopied(true)
+      toast.success('초대 코드를 복사했어요')
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      toast.error('복사에 실패했어요. 코드를 직접 입력해주세요.')
+    }
+  }
 
   if (!user) return <Navigate to="/login" replace />
   // 커플 생성 직후엔 초대 코드 화면(resultCode)을 보여줘야 하므로 그때는 리다이렉트하지 않는다.
@@ -31,7 +45,7 @@ export default function Onboarding() {
       const { inviteCode } = await createCouple(user.uid, displayName, role)
       setResultCode(inviteCode)
     } catch (err) {
-      setError(err instanceof Error ? err.message : '오류가 발생했습니다.')
+      setError(authErrorMessage(err))
     } finally {
       setLoading(false)
     }
@@ -47,7 +61,7 @@ export default function Onboarding() {
       // 참여자는 이미 등록된 공동 자산을 보게 되므로 바로 홈으로.
       navigate('/', { replace: true })
     } catch (err) {
-      setError(err instanceof Error ? err.message : '오류가 발생했습니다.')
+      setError(authErrorMessage(err))
     } finally {
       setLoading(false)
     }
@@ -66,6 +80,15 @@ export default function Onboarding() {
               <p className="text-3xl font-mono font-bold tracking-widest text-primary">
                 {resultCode}
               </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-4 bg-background/70"
+                onClick={handleCopy}
+              >
+                {copied ? <Check className="mr-1.5 h-4 w-4 text-primary" /> : <Copy className="mr-1.5 h-4 w-4" />}
+                {copied ? '복사됨' : '코드 복사'}
+              </Button>
             </div>
             <p className="text-sm text-muted-foreground">
               파트너가 이 코드로 참여하면 자산을 함께 관리할 수 있습니다.

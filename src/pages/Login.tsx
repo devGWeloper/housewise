@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { auth as firebaseAuth } from '@/lib/firebase'
-import { signUpWithEmail, signInWithEmail, signInWithGoogle, checkUserProfile } from '@/lib/auth'
+import { signUpWithEmail, signInWithEmail, signInWithGoogle, checkUserProfile, authErrorMessage } from '@/lib/auth'
 import { useAuthStore } from '@/stores/authStore'
 
 export default function Login() {
@@ -45,7 +45,7 @@ export default function Login() {
         navigate('/onboarding', { replace: true })
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : '오류가 발생했습니다.')
+      setError(authErrorMessage(err))
     } finally {
       setLoading(false)
     }
@@ -63,7 +63,7 @@ export default function Login() {
         navigate('/onboarding', { replace: true })
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : '오류가 발생했습니다.')
+      setError(authErrorMessage(err))
     } finally {
       setLoading(false)
     }

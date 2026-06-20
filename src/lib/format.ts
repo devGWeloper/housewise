@@ -10,6 +10,18 @@ export function formatNumber(amount: number): string {
   return new Intl.NumberFormat('ko-KR').format(amount)
 }
 
+// 콤마/단위가 섞인 입력 문자열에서 숫자만 추출 (금액 입력 필드 공용)
+export function parseAmount(v: string): number {
+  const n = Number(v.replace(/[^\d-]/g, ''))
+  return Number.isFinite(n) ? n : 0
+}
+
+// 수익률 표기 (예: +12.3%, -4.0%)
+export function formatPercent(rate: number): string {
+  const sign = rate > 0 ? '+' : ''
+  return `${sign}${rate.toFixed(1)}%`
+}
+
 export function getCurrentMonth(): string {
   const now = new Date()
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`

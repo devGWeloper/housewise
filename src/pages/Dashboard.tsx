@@ -42,6 +42,7 @@ import { useGoals } from '@/hooks/useGoals'
 import { computeGoalProgress } from '@/lib/goals'
 import {
   formatCurrency,
+  formatPercent,
   getCurrentMonth,
   getMonthLabel,
   getPrevMonth,
@@ -49,6 +50,8 @@ import {
   getShortMonthLabel,
   formatAxisAmount,
 } from '@/lib/format'
+import { computeAssetReturn } from '@/lib/asset'
+import { recordIncomeByOwner } from '@/lib/income'
 import { ASSET_OWNER_LABELS, ASSET_OWNER_COLORS } from '@/types'
 
 const assetPieColors = ['#3b82f6', '#8b5cf6', '#f59e0b']
@@ -72,6 +75,7 @@ export default function Dashboard() {
   // 선택한 달의 수입/지출
   const monthRecord = getRecord(selectedMonth)
   const monthIncome = monthRecord?.income ?? 0
+  const incomeSplit = monthRecord ? recordIncomeByOwner(monthRecord) : null
   const monthExpense = monthRecord?.expense ?? 0
   const monthSavings = monthIncome - monthExpense
   const savingsRate = monthIncome > 0 ? Math.round((monthSavings / monthIncome) * 100) : null
@@ -101,6 +105,15 @@ export default function Dashboard() {
 
   // 용도(목적)가 지정된 통장
   const purposedAssets = assets.filter((a) => a.purpose && a.purpose.trim().length > 0)
+
+  // 투자 현황 (투자 원금이 입력된 주식·연금 자산 기준 수익률)
+  const investmentAssets = assets
+    .filter((a) => (a.assetType === 'stock' || a.assetType === 'pension') && (a.details?.principal ?? 0) > 0)
+    .map((a) => ({ asset: a, ret: computeAssetReturn(a)! }))
+  const invPrincipal = investmentAssets.reduce((s, { asset }) => s + (asset.details!.principal ?? 0), 0)
+  const invValue = investmentAssets.reduce((s, { asset }) => s + asset.balance, 0)
+  const invProfit = invValue - invPrincipal
+  const invRate = invPrincipal > 0 ? (invProfit / invPrincipal) * 100 : null
 
   // 부채
   const debtAssets = assets.filter((a) => a.assetType === 'debt')
@@ -161,7 +174,7 @@ export default function Dashboard() {
               </p>
             </div>
             <Button asChild>
-              <Link to="/assets">
+              <Link to="/setup">
                 <Landmark className="mr-1 h-4 w-4" /> 자산 등록 시작하기
               </Link>
             </Button>
@@ -258,6 +271,53 @@ export default function Dashboard() {
         </Card>
       )}
 
+      {/* 투자 현황 (수익률) */}
+      {investmentAssets.length > 0 && invRate !== null && (
+        <Card className="shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              {invProfit >= 0 ? <TrendingUp className="h-4 w-4 text-emerald-500" /> : <TrendingDown className="h-4 w-4 text-red-500" />}
+              투자 현황
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3.5">
+            <div className="rounded-xl bg-muted/40 px-4 py-3">
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div>
+                  <p className="text-xs text-muted-foreground">평가금액</p>
+                  <p className="font-bold text-sm break-all">{formatCurrency(invValue)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">투자 원금</p>
+                  <p className="font-bold text-sm break-all">{formatCurrency(invPrincipal)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">평가손익</p>
+                  <p className={`font-bold text-sm break-all ${invProfit >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                    {invProfit >= 0 ? '+' : ''}{formatCurrency(invProfit)}
+                  </p>
+                </div>
+              </div>
+              <div className="mt-2 flex items-center justify-center gap-1.5 border-t border-border/60 pt-2 text-sm font-semibold">
+                <span className="text-muted-foreground">총 수익률</span>
+                <span className={invProfit >= 0 ? 'text-emerald-600' : 'text-red-500'}>{formatPercent(invRate)}</span>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              {investmentAssets.map(({ asset, ret }) => (
+                <div key={asset.id} className="flex items-center justify-between gap-2 text-sm">
+                  <span className="truncate">{asset.name}</span>
+                  <span className="flex shrink-0 items-center gap-2">
+                    <span className="text-muted-foreground">{formatCurrency(asset.balance)}</span>
+                    <span className={`font-medium ${ret.profit >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>{formatPercent(ret.rate)}</span>
+                  </span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* 이 달 수입/지출/저축 */}
       <div className="grid grid-cols-3 gap-3">
         <Card className="shadow-sm">
@@ -266,6 +326,11 @@ export default function Dashboard() {
               <TrendingUp className="h-3.5 w-3.5 text-emerald-500" /> 수입
             </div>
             <p className="text-base font-bold text-emerald-600 break-all">{formatCurrency(monthIncome)}</p>
+            {incomeSplit?.hasBreakdown && monthIncome > 0 && (
+              <p className="mt-0.5 text-[10px] leading-tight text-muted-foreground">
+                남편 {formatCurrency(incomeSplit.husband)}<br />아내 {formatCurrency(incomeSplit.wife)}
+              </p>
+            )}
           </CardContent>
         </Card>
         <Card className="shadow-sm">

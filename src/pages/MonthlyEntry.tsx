@@ -1,67 +1,66 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, ClipboardList, Check } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ClipboardList, Check, Plus, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { OwnerBadge } from '@/components/OwnerBadge'
+import { AmountInput } from '@/components/AmountInput'
 import { useAssets } from '@/hooks/useAssets'
 import { useMonthlyRecords } from '@/hooks/useMonthlyRecords'
+import { incomeByOwner, sumIncomeItems } from '@/lib/income'
 import {
   formatCurrency,
   getCurrentMonth,
   getMonthLabel,
   getPrevMonth,
   getNextMonth,
+  parseAmount,
 } from '@/lib/format'
 import {
   ASSET_OWNERS,
   ASSET_OWNER_LABELS,
   ASSET_OWNER_COLORS,
   ASSET_TYPE_LABELS,
+  INCOME_LABEL_PRESETS,
   type AssetType,
   type AssetOwner,
+  type IncomeItem,
+  type IncomeOwner,
 } from '@/types'
 
 const ASSET_TYPE_ORDER: AssetType[] = ['deposit', 'stock', 'pension', 'debt']
+const INCOME_LABEL_LIST_ID = 'income-label-presets'
 
-function parseAmount(v: string): number {
-  const n = Number(v.replace(/[^\d-]/g, ''))
-  return Number.isFinite(n) ? n : 0
+// 편집용 수입 행 (금액은 문자열로 다룬다)
+interface IncomeRow {
+  owner: IncomeOwner
+  label: string
+  amount: string
 }
 
-// 콤마가 들어간 금액 입력 필드
-function AmountInput({
-  value,
-  onChange,
-  className,
-  placeholder = '0',
-}: {
-  value: string
-  onChange: (next: string) => void
-  className?: string
-  placeholder?: string
-}) {
-  return (
-    <Input
-      type="text"
-      inputMode="numeric"
-      value={value ? Number(parseAmount(value)).toLocaleString('ko-KR') : ''}
-      onChange={(e) => onChange(String(parseAmount(e.target.value)))}
-      placeholder={placeholder}
-      className={className}
-    />
-  )
+function defaultIncomeRows(): IncomeRow[] {
+  return [
+    { owner: 'husband', label: '월급', amount: '' },
+    { owner: 'wife', label: '월급', amount: '' },
+  ]
 }
 
 export default function MonthlyEntryPage() {
   const currentMonth = getCurrentMonth()
   const [month, setMonth] = useState(currentMonth)
   const [saving, setSaving] = useState(false)
-  const [income, setIncome] = useState('')
+  const [incomeRows, setIncomeRows] = useState<IncomeRow[]>(defaultIncomeRows())
   const [expense, setExpense] = useState('')
   // assetId -> 입력 문자열
   const [values, setValues] = useState<Record<string, string>>({})
@@ -87,8 +86,15 @@ export default function MonthlyEntryPage() {
       next[asset.id] = String(value ?? 0)
     }
     setValues(next)
-    // 수입/지출은 그 달 기록이 있으면 그 값, 없으면 비워둔다 (매달 달라지므로)
-    setIncome(thisRecord ? String(thisRecord.income ?? 0) : '')
+
+    // 수입: 이 달 기록이 있으면 그 항목, 없으면 직전 달 구조를 가져와 부담을 줄인다.
+    const sourceItems = thisRecord?.incomeItems ?? prevRecord?.incomeItems
+    if (sourceItems && sourceItems.length > 0) {
+      setIncomeRows(sourceItems.map((it) => ({ owner: it.owner, label: it.label, amount: String(it.amount) })))
+    } else {
+      setIncomeRows(defaultIncomeRows())
+    }
+    // 지출은 그 달 기록이 있으면 그 값, 없으면 비워둔다 (매달 달라지므로)
     setExpense(thisRecord ? String(thisRecord.expense ?? 0) : '')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [month, assetsLoading, recordsLoading, assets.length, records.length])
@@ -120,13 +126,28 @@ export default function MonthlyEntryPage() {
     return { liveAssets: assetSum, liveDebt: debtSum, ownerNet: net }
   }, [assets, values])
 
+  // 수입 실시간 집계 (총합 + 명의별)
+  const liveIncomeItems: IncomeItem[] = incomeRows.map((r) => ({
+    owner: r.owner,
+    label: r.label,
+    amount: parseAmount(r.amount),
+  }))
+  const monthIncome = sumIncomeItems(liveIncomeItems)
+  const incomeOwnerTotals = incomeByOwner(liveIncomeItems)
+
   const liveNetWorth = liveAssets - liveDebt
-  const monthIncome = parseAmount(income)
   const monthExpense = parseAmount(expense)
   const monthSavings = monthIncome - monthExpense
 
   const existingRecord = getRecord(month)
   const hasAssets = assets.length > 0
+
+  const updateRow = (idx: number, patch: Partial<IncomeRow>) =>
+    setIncomeRows((prev) => prev.map((r, i) => (i === idx ? { ...r, ...patch } : r)))
+  const addRow = () =>
+    setIncomeRows((prev) => [...prev, { owner: 'husband', label: '부수입', amount: '' }])
+  const removeRow = (idx: number) =>
+    setIncomeRows((prev) => prev.filter((_, i) => i !== idx))
 
   const handleSave = async () => {
     setSaving(true)
@@ -138,11 +159,10 @@ export default function MonthlyEntryPage() {
         owner: asset.owner ?? 'joint',
         balance: parseAmount(values[asset.id] ?? '0'),
       }))
-      await saveRecord(
-        month,
-        { income: monthIncome, expense: monthExpense, entries },
-        isCurrentMonth,
-      )
+      const incomeItems: IncomeItem[] = incomeRows
+        .map((r) => ({ owner: r.owner, label: r.label.trim() || '수입', amount: parseAmount(r.amount) }))
+        .filter((it) => it.amount > 0)
+      await saveRecord(month, { incomeItems, expense: monthExpense, entries }, isCurrentMonth)
       toast.success(`${getMonthLabel(month)} 기록을 저장했어요.`)
     } catch {
       toast.error('저장에 실패했어요. 잠시 후 다시 시도해 주세요.')
@@ -163,13 +183,20 @@ export default function MonthlyEntryPage() {
 
   return (
     <div className="space-y-6 md:space-y-7 pb-24">
+      <datalist id={INCOME_LABEL_LIST_ID}>
+        {INCOME_LABEL_PRESETS.map((p) => (
+          <option key={p} value={p} />
+        ))}
+      </datalist>
+
       <div className="rounded-2xl border border-border/70 bg-card/80 px-4 py-3 backdrop-blur">
         <div className="flex items-center gap-2">
           <ClipboardList className="h-5 w-5 text-primary" />
           <h2 className="text-lg font-semibold">월간 입력</h2>
         </div>
         <p className="mt-1 text-sm text-muted-foreground">
-          한 달에 한 번, 그 달의 수입·지출과 각 통장·자산·부채 잔액만 기입하면 현황과 추이가 정리돼요.
+          그 달의 수입·지출과 통장·자산 잔액을 기록해요. 한 달에 한 번이면 충분하지만,
+          <b className="text-foreground"> 언제든 다시 열어 정산·수정</b>할 수 있어요.
         </p>
       </div>
 
@@ -240,18 +267,68 @@ export default function MonthlyEntryPage() {
         </Card>
       </div>
 
-      {/* 그 달의 수입/지출 */}
+      {/* 그 달의 수입 (명의별·항목별) */}
       <div className="space-y-2">
-        <p className="px-1 text-xs font-medium text-muted-foreground">이 달의 수입·지출</p>
+        <div className="flex items-center justify-between px-1">
+          <p className="text-xs font-medium text-muted-foreground">이 달의 수입</p>
+          {monthIncome > 0 && (
+            <p className="text-[11px] text-muted-foreground">
+              남편 {formatCurrency(incomeOwnerTotals.husband)} · 아내 {formatCurrency(incomeOwnerTotals.wife)}
+            </p>
+          )}
+        </div>
         <Card>
-          <CardContent className="space-y-3 py-4">
-            <div className="flex items-center justify-between gap-3">
-              <Label className="shrink-0">수입</Label>
-              <div className="flex w-[55%] max-w-[200px] items-center gap-1">
-                <AmountInput value={income} onChange={setIncome} className="text-right text-emerald-600" />
-                <span className="text-xs text-muted-foreground shrink-0">원</span>
+          <CardContent className="space-y-2.5 py-4">
+            {incomeRows.map((row, idx) => (
+              <div key={idx} className="flex items-center gap-2">
+                <Select value={row.owner} onValueChange={(v) => updateRow(idx, { owner: v as IncomeOwner })}>
+                  <SelectTrigger className="h-9 w-[72px] shrink-0 px-2 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="husband">{ASSET_OWNER_LABELS.husband}</SelectItem>
+                    <SelectItem value="wife">{ASSET_OWNER_LABELS.wife}</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Input
+                  value={row.label}
+                  onChange={(e) => updateRow(idx, { label: e.target.value })}
+                  list={INCOME_LABEL_LIST_ID}
+                  placeholder="월급"
+                  className="h-9 min-w-0 flex-1"
+                />
+                <div className="flex w-[40%] max-w-[150px] shrink-0 items-center gap-1">
+                  <AmountInput
+                    value={row.amount}
+                    onChange={(next) => updateRow(idx, { amount: next })}
+                    className="h-9 text-right text-emerald-600"
+                  />
+                  <span className="shrink-0 text-xs text-muted-foreground">원</span>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 shrink-0 text-muted-foreground"
+                  onClick={() => removeRow(idx)}
+                  disabled={incomeRows.length === 1}
+                >
+                  <X className="h-3.5 w-3.5" />
+                </Button>
               </div>
-            </div>
+            ))}
+            <Button type="button" variant="outline" size="sm" className="w-full border-dashed" onClick={addRow}>
+              <Plus className="mr-1 h-3.5 w-3.5" /> 수입 항목 추가 (부수입·보너스 등)
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* 그 달의 지출 (공동 합계) */}
+      <div className="space-y-2">
+        <p className="px-1 text-xs font-medium text-muted-foreground">이 달의 지출 (가구 합계)</p>
+        <Card>
+          <CardContent className="py-4">
             <div className="flex items-center justify-between gap-3">
               <Label className="shrink-0">지출</Label>
               <div className="flex w-[55%] max-w-[200px] items-center gap-1">
@@ -269,7 +346,7 @@ export default function MonthlyEntryPage() {
           <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
             <p className="text-muted-foreground">아직 등록된 통장·자산이 없어요.</p>
             <Button asChild>
-              <Link to="/assets">통장·자산 등록하기</Link>
+              <Link to="/setup">통장·자산 등록하기</Link>
             </Button>
           </CardContent>
         </Card>

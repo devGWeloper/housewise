@@ -11,10 +11,11 @@ import {
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { useAuthStore } from '@/stores/authStore'
-import type { MonthlyRecord, MonthlyRecordEntry } from '@/types'
+import type { IncomeItem, MonthlyRecord, MonthlyRecordEntry } from '@/types'
+import { sumIncomeItems } from '@/lib/income'
 
 export interface MonthlyRecordInput {
-  income: number
+  incomeItems: IncomeItem[] // 명의별·항목별 수입 (income 합계는 여기서 파생)
   expense: number
   entries: MonthlyRecordEntry[]
 }
@@ -70,7 +71,8 @@ export function useMonthlyRecords() {
   const saveRecord = useCallback(
     async (month: string, input: MonthlyRecordInput, syncAssetBalances: boolean) => {
       if (!profile?.coupleId) return
-      const { income, expense, entries } = input
+      const { incomeItems, expense, entries } = input
+      const income = sumIncomeItems(incomeItems)
 
       const totalAssets = entries
         .filter((e) => e.assetType !== 'debt')
@@ -84,6 +86,7 @@ export function useMonthlyRecords() {
         month,
         coupleId: profile.coupleId,
         income,
+        incomeItems,
         expense,
         entries,
         totalAssets,

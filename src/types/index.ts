@@ -14,6 +14,7 @@ export interface UserProfile {
 export interface Couple {
   id: string
   members: string[]
+  memberRoles?: Record<string, UserRole> // uid → 역할 (남편/아내 중복 방지용)
   inviteCode: string
   createdAt: Timestamp
 }
@@ -61,6 +62,10 @@ export interface Asset {
     loanName?: string
     monthlyPayment?: number
     originalAmount?: number
+    // 투자/연금 계좌 메타데이터 (수익률·평가손익 계산 및 표시용 — lib/asset.ts 참고)
+    principal?: number // 투자/납입 원금 (balance와 비교해 수익률 계산)
+    accountCash?: number // 계좌 내 미투자 현금(예수금)
+    holdings?: string // 보유 종목 메모 (예: '삼성전자, S&P500 ETF')
   }
 }
 
@@ -104,11 +109,25 @@ export interface MonthlyRecordEntry {
   balance: number
 }
 
+// 수입은 한 명·한 항목이 아니다. 명의(남편/아내) × 항목(월급/부수입/보너스 등)으로 담는다.
+// 지출은 공동 풀이라 합계만 둔다.
+export type IncomeOwner = 'husband' | 'wife'
+
+export interface IncomeItem {
+  owner: IncomeOwner
+  label: string // '월급', '부수입', '보너스' 등
+  amount: number
+}
+
+// 자주 쓰는 수입 항목 라벨 프리셋 (자유 입력도 허용)
+export const INCOME_LABEL_PRESETS = ['월급', '부수입', '보너스', '사업소득', '이자/배당', '용돈', '기타']
+
 export interface MonthlyRecord {
   id: string // = month 'YYYY-MM'
   month: string // 'YYYY-MM'
   coupleId: string
-  income: number
+  income: number // 합계 (= incomeItems 총합). 추이 차트·하위호환용
+  incomeItems?: IncomeItem[] // 명의별·항목별 수입 (구버전 기록엔 없을 수 있음)
   expense: number
   entries: MonthlyRecordEntry[]
   totalAssets: number

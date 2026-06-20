@@ -38,6 +38,8 @@ import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAssets } from '@/hooks/useAssets'
 import { useMonthlyRecords } from '@/hooks/useMonthlyRecords'
+import { useGoals } from '@/hooks/useGoals'
+import { computeGoalProgress } from '@/lib/goals'
 import {
   formatCurrency,
   getCurrentMonth,
@@ -57,8 +59,15 @@ export default function Dashboard() {
 
   const { totalAssets, totalDebt, netWorth, loading: assetsLoading, assets, ownerTotals } = useAssets()
   const { records, getRecord, loading: recordsLoading } = useMonthlyRecords()
+  const { goals, loading: goalsLoading } = useGoals()
 
-  const loading = assetsLoading || recordsLoading
+  const loading = assetsLoading || recordsLoading || goalsLoading
+
+  // 진행 중인 목표 (가까운 순) 상위 3개
+  const goalProgress = goals
+    .map((g) => ({ goal: g, ...computeGoalProgress(g, netWorth, totalAssets, records) }))
+    .sort((a, b) => b.progress - a.progress)
+    .slice(0, 3)
 
   // 선택한 달의 수입/지출
   const monthRecord = getRecord(selectedMonth)
@@ -284,6 +293,40 @@ export default function Dashboard() {
             <Link to="/monthly"><ClipboardList className="mr-1 h-4 w-4" /> 입력하기</Link>
           </Button>
         </div>
+      )}
+
+      {/* 재무 목표 */}
+      {goalProgress.length > 0 && (
+        <Card className="shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Target className="h-4 w-4" /> 재무 목표
+            </CardTitle>
+            <Button asChild variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground">
+              <Link to="/goals">전체 보기 <ChevronRight className="h-3.5 w-3.5" /></Link>
+            </Button>
+          </CardHeader>
+          <CardContent className="space-y-3.5">
+            {goalProgress.map(({ goal, current, progress, achieved }) => (
+              <Link key={goal.id} to="/goals" className="block">
+                <div className="mb-1 flex items-center justify-between gap-2 text-sm">
+                  <span className="flex min-w-0 items-center gap-1.5">
+                    <span>{goal.emoji ?? '🎯'}</span>
+                    <span className="truncate font-medium">{goal.name}</span>
+                  </span>
+                  <span className={`shrink-0 text-xs ${achieved ? 'font-medium text-emerald-600' : 'text-muted-foreground'}`}>
+                    {achieved ? '달성 🎉' : `${progress}%`}
+                  </span>
+                </div>
+                <Progress value={progress} className={achieved ? 'h-2 [&>div]:bg-emerald-500' : 'h-2'} />
+                <div className="mt-1 flex justify-between text-[11px] text-muted-foreground">
+                  <span>{formatCurrency(current)}</span>
+                  <span>{formatCurrency(goal.targetAmount)}</span>
+                </div>
+              </Link>
+            ))}
+          </CardContent>
+        </Card>
       )}
 
       {/* 순자산 추이 */}

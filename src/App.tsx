@@ -11,6 +11,7 @@ const Onboarding = lazy(() => import('@/pages/Onboarding'))
 const Dashboard = lazy(() => import('@/pages/Dashboard'))
 const AssetsPage = lazy(() => import('@/pages/Assets'))
 const MonthlyEntryPage = lazy(() => import('@/pages/MonthlyEntry'))
+const GoalsPage = lazy(() => import('@/pages/Goals'))
 const SetupPage = lazy(() => import('@/pages/Setup'))
 const SettingsPage = lazy(() => import('@/pages/Settings'))
 
@@ -47,6 +48,7 @@ export default function App() {
               <Route path="/" element={<Dashboard />} />
               <Route path="/monthly" element={<MonthlyEntryPage />} />
               <Route path="/assets" element={<AssetsPage />} />
+              <Route path="/goals" element={<GoalsPage />} />
               <Route path="/setup" element={<SetupPage />} />
               <Route path="/settings" element={<SettingsPage />} />
             </Route>

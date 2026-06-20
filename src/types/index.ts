@@ -64,6 +64,36 @@ export interface Asset {
   }
 }
 
+// 재무 목표 (couples/{coupleId}/goals/{goalId})
+// 무엇을 기준으로 진행률을 잴지(track)와 목표 금액·기한을 저장한다.
+export type GoalTrack = 'networth' | 'assets' | 'manual'
+
+export const GOAL_TRACK_LABELS: Record<GoalTrack, string> = {
+  networth: '순자산 기준 (자동)',
+  assets: '총자산 기준 (자동)',
+  manual: '직접 입력',
+}
+
+export const GOAL_TRACK_HINTS: Record<GoalTrack, string> = {
+  networth: '현재 순자산이 자동으로 진행 금액이 돼요.',
+  assets: '현재 총자산이 자동으로 진행 금액이 돼요.',
+  manual: '이 목표를 위해 모은 금액을 직접 입력해요.',
+}
+
+export const GOAL_EMOJI_PRESETS = ['🏠', '✈️', '🚗', '🛟', '👶', '🌴', '💍', '🎓', '💰', '🎯']
+
+export interface Goal {
+  id: string
+  coupleId: string
+  name: string
+  emoji?: string
+  track: GoalTrack
+  targetAmount: number
+  currentAmount?: number // manual track 전용
+  targetDate?: string // 'YYYY-MM-DD' (선택)
+  createdAt: Timestamp
+}
+
 // 월별 입력 기록 (couples/{coupleId}/monthlyRecords/{YYYY-MM})
 // 그 달의 수입/지출 + 각 자산/부채/주식 잔액을 한 번에 기록한다.
 export interface MonthlyRecordEntry {

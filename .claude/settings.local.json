@@ -4,7 +4,9 @@
       "Bash(cat:*)",
       "Bash(head:*)",
       "Bash(tail:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(npx eslint *)",
+      "Bash(npm run *)"
     ]
   }
 }

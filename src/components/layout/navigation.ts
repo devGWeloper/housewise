@@ -4,6 +4,7 @@ import {
   Landmark,
   LayoutDashboard,
   Settings,
+  Target,
 } from 'lucide-react'
 
 export interface NavItem {
@@ -36,6 +37,13 @@ export const primaryNavItems: NavItem[] = [
     icon: Landmark,
     section: 'manage',
   },
+  {
+    to: '/goals',
+    label: '목표',
+    description: '내 집 마련·비상금 등 함께 모을 목표를 관리해요.',
+    icon: Target,
+    section: 'manage',
+  },
 ]
 
 export const utilityNavItems: NavItem[] = [
@@ -61,7 +69,7 @@ export const desktopNavSections = [
   {
     id: 'manage',
     title: '관리',
-    items: [navByPath('/monthly'), navByPath('/assets')],
+    items: [navByPath('/monthly'), navByPath('/assets'), navByPath('/goals')],
   },
 ] as const
 
